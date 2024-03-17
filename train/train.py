@@ -9,9 +9,11 @@ import math
 from utils.data_processing import Data
 from typing import Tuple, Dict, Type
 from torch.nn.modules.loss import _Loss
+from torch.distributions.normal import Normal
+from utils.my_utils import compute_loss
 
 
-def select_label(labels, types):
+def select_label(labels, types):  # 这个返回的应该是bool值，可以根据这个选出对于的位置
     train_idx = (labels != -1) & (types == 1)
     val_idx = (labels != -1) & (types == 2)
     test_idx = (labels != -1) & (types == 3)
@@ -29,29 +31,33 @@ def move_to_device(device, *args):
 
 
 # 重新又跑了一边，但是这一边不再更新网络的参数
-def eval_model(model: CTCP, eval: Data, device: torch.device, param: Dict, metric: Metric,
+def eval_model(model: CTCP, eval: Data, decoder_data, device: torch.device, param: Dict, metric: Metric,
                loss_criteria: _Loss, move_final: bool = False) -> Dict:
     model.eval()
     model.reset_state()
     metric.fresh()
     epoch_metric = {}
     loss = {'train': [], 'val': [], 'test': []}
+    z0_prior = Normal(torch.Tensor([0.0]).to(device), torch.Tensor([1.]).to(device))
     with torch.no_grad():
         for x, label in tqdm(eval.loader(param['bs']), total=math.ceil(eval.length / param['bs']), desc='eval_or_test'):
             src, dst, trans_cas, trans_time, pub_time, types = x
             index_dict = select_label(label, types)
             target_idx = index_dict['train'] | index_dict['val'] | index_dict['test']
             trans_time, pub_time, label = move_to_device(device, trans_time, pub_time, label)
-            pred = model.forward(src, dst, trans_cas, trans_time, pub_time, target_idx)
+            pred, extra_info = model.forward(src, dst, trans_cas, trans_time, pub_time, target_idx)
+            first_point = extra_info['first_point']
             for dtype in ['train', 'val', 'test']:
                 idx = index_dict[dtype]
                 if sum(idx) > 0:
                     m_target = trans_cas[idx]
-                    m_label = label[idx]
+                    m_label = torch.tensor([decoder_data[key] for key in m_target])
                     m_label[m_label < 1] = 1
-                    m_label = torch.log2(m_label)
+                    # m_label = torch.log2(m_label)
                     m_pred = pred[idx]
-                    loss[dtype].append(loss_criteria(m_pred, m_label).item())
+                    m_first_point = first_point[idx]
+                    loss[dtype].append(
+                        compute_loss(pred=m_pred, label=m_label, first_point=m_first_point, z0_prior=z0_prior).item())
                     metric.update(target=m_target, pred=m_pred.cpu().numpy(), label=m_label.cpu().numpy(), dtype=dtype)
             model.update_state()
         for dtype in ['train', 'val', 'test']:
@@ -60,12 +66,14 @@ def eval_model(model: CTCP, eval: Data, device: torch.device, param: Dict, metri
         return epoch_metric
 
 
-def train_model(num: int, dataset: Data, model: CTCP, logger: logging.Logger, early_stopper: EarlyStopMonitor,
+def train_model(num: int, dataset: Data, decoder_data, model: CTCP, logger: logging.Logger,
+                early_stopper: EarlyStopMonitor,
                 device: torch.device, param: Dict, metric: Metric, result: Dict):
     train, val, test = dataset, dataset, dataset
     model = model.to(device)
     logger.info('Start training citation')
     optimizer = torch.optim.Adam(model.parameters(), lr=param['lr'])
+    z0_prior = Normal(torch.Tensor([0.0]).to(device), torch.Tensor([1.]).to(device))
     loss_criterion = torch.nn.MSELoss()
     for epoch in range(param['epoch']):
         model.reset_state()
@@ -75,25 +83,28 @@ def train_model(num: int, dataset: Data, model: CTCP, logger: logging.Logger, ea
         train_loss = []
         for x, label in tqdm(train.loader(param['bs']), total=math.ceil(train.length / param['bs']),
                              desc='training'):
-            src, dst, trans_cas, trans_time, pub_time, types = x  # 数据处理之后得到的吗，可以自动完成
+            src, dst, trans_cas, trans_time, pub_time, types = x  # 数据处理之后得到的吗，可以自动完成，tran_cas是级联id
             idx_dict = select_label(label, types)  # 训练集，与id的一个字典，label不等于-1代表到达了观测时间
             target_idx = idx_dict['train']  # 训练集的id
             trans_time, pub_time, label = move_to_device(device, trans_time, pub_time, label)
-            pred = model.forward(src, dst, trans_cas, trans_time, pub_time, target_idx)
+            pred, extra_info = model.forward(src, dst, trans_cas, trans_time, pub_time, target_idx)
             if sum(target_idx) > 0:
-                target, target_label, target_time = trans_cas[target_idx], label[target_idx], trans_time[target_idx]
+                target, target_time = trans_cas[target_idx], trans_time[target_idx]
+                target_label = torch.tensor([decoder_data[key] for key in target])
                 target_label[target_label < 1] = 1
-                target_label = torch.log2(target_label)  # 对数化
+                # target_label = torch.log2(target_label)  # 对数化
                 target_pred = pred[target_idx]
+                first_point = extra_info['first_point']
                 optimizer.zero_grad()
-                loss = loss_criterion(target_pred, target_label)  # loss是针对已经预测的来做的
+                # loss = loss_criterion(target_pred, target_label)  # loss是针对已经预测的来做的
+                loss = compute_loss(target_pred, target_label, first_point=first_point, z0_prior=z0_prior)
                 loss.backward()
                 optimizer.step()
                 train_loss.append(loss.item())
             model.update_state()
             model.detach_state()
         epoch_end = time.time()
-        epoch_metric = eval_model(model, val, device, param, metric, loss_criterion, move_final=False)
+        epoch_metric = eval_model(model, val, decoder_data, device, param, metric, loss_criterion, move_final=False)
         logger.info(f"Epoch{epoch}: time_cost:{epoch_end - epoch_start} train_loss:{np.mean(train_loss)}")
         for dtype in ['train', 'val', 'test']:
             metric.info(dtype)

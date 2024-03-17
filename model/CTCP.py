@@ -4,15 +4,18 @@ import torch.nn as nn
 from typing import Dict
 from model.encoder.state.dynamic_state import DynamicState
 from model.encoder.state.state_updater import get_state_updater
-from model.decoder.embedding_module import get_embedding_module
+from model.encoder.embedding_module import get_embedding_module
 from model.encoder.message.message_generator import get_message_generator
 from model.decoder.prediction import get_predictor
 from model.time_encoder import get_time_encoder
 from utils.hgraph import HGraph
+from model.decoder.cas_ode import CasODE
+from model.encoder.encoder_z0 import EncodeZ0
 
 
 class CTCP(nn.Module):
-    def __init__(self, device: torch.device, node_dim: int = 100, embedding_module_type: str = "seq",
+    def __init__(self, args, device: torch.device, time_steps_to_predict, node_dim: int = 100,
+                 embedding_module_type: str = "seq",
                  state_updater_type: str = "gru", predictor: str = 'linear', time_enc_dim: int = 8,
                  single: bool = False, ntypes: set = None, dropout: float = 0.1, n_nodes: Dict = None,
                  max_time: float = None, use_static: bool = False, merge_prob: float = 0.5,
@@ -25,6 +28,7 @@ class CTCP(nn.Module):
         self.device = device
         self.cas_num = n_nodes['cas']
         self.user_num = n_nodes['user']
+        self.time_steps_to_predict = time_steps_to_predict
         self.single = single
         self.hgraph = HGraph(num_user=n_nodes['user'], num_cas=n_nodes['cas'])
         self.time_encoder = get_time_encoder('difference', dimension=time_enc_dim, single=self.single)
@@ -57,6 +61,8 @@ class CTCP(nn.Module):
                                                      max_global_time=max_global_time, use_dynamic=use_dynamic,
                                                      use_temporal=use_temporal, use_structural=use_structural)
         self.predictor = get_predictor(emb_dim=node_dim, predictor_type=predictor, merge_prob=merge_prob)
+        self.cas_ode = CasODE(ode_hidden_dim=node_dim, args=args)
+        self.encoder_z0 = EncodeZ0(emb_dim=node_dim)
 
     def update_state(self):
         if self.use_dynamic:
@@ -64,7 +70,7 @@ class CTCP(nn.Module):
                 self.dynamic_state[ntype].store_cache()
 
     def forward(self, source_nodes: np.ndarray, destination_nodes: np.ndarray, trans_cascades: np.ndarray,
-                edge_times: torch.Tensor, pub_times: torch.Tensor, target_idx: np.ndarray) -> torch.Tensor:
+                edge_times: torch.Tensor, pub_times: torch.Tensor, target_idx: np.ndarray) :
         """
         given a batch of interactions, update the corresponding nodes' dynamic states and give the popularity of the
         cascades that have reached the observation time.
@@ -81,13 +87,17 @@ class CTCP(nn.Module):
             nodes, messages, times = self.message_generator.get_message(source_nodes, destination_nodes,
                                                                         trans_cascades, edge_times, pub_times, 'all')
             self.state_updater.update_state(nodes, messages, times)
-        self.hgraph.insert(trans_cascades, source_nodes, destination_nodes, edge_times, pub_times)
+        self.hgraph.insert(trans_cascades, source_nodes, destination_nodes, edge_times,
+                           pub_times)  # 把这一个batch的数据插入到图中，形成图
         target_cascades = trans_cascades[target_idx]  # 这个真的可以做到吗，表面是否到达预测时间
         pred = torch.zeros(len(trans_cascades)).to(self.device)
+        extra_info={}
         if len(target_cascades) > 0:  # 存在到达了观测时间的级联，
             emb = self.embedding_module.compute_embedding(target_cascades)  # 这就对了，针对target来做计算embedding
-            pred[target_idx] = self.predictor.forward(emb)  # 这个embedding是对什么的，这个不太对吧
-        return pred
+            first_point_nor = self.encoder_z0(emb)
+            pred[target_idx],extra_info = self.cas_ode.get_reconstruction(first_point_nor=first_point_nor,
+                                                               time_steps_to_predict=self.time_steps_to_predict)  # 这个embedding是对什么的，这个不太对吧
+        return pred,extra_info
 
     def init_state(self):
         for ntype in self.ntypes:

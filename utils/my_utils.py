@@ -5,8 +5,8 @@ import torch.nn as nn
 from copy import deepcopy
 import pickle as pk
 from sklearn.metrics import mean_absolute_error, mean_squared_error
-
-
+from torch.distributions.normal import Normal
+from torch.distributions import kl_divergence
 def save_model(model: nn.Module, save_path, run):
     torch.save(model.state_dict(), f'{save_path}_{run}.pth')
 
@@ -64,8 +64,25 @@ def set_config(args):
     return param
 
 
+def compute_loss(pred, label,first_point,z0_prior, observe_std=0.01,kl_coef=1):
+    rec_likelihood = compute_log_likelihood(pred, label, observe_std)
+    fp_mu, fp_std, fp_enc=first_point
+    fp_std = fp_std.abs()
+    fp_distr = Normal(fp_mu, fp_std)
+    kldiv_z0 = kl_divergence(fp_distr, z0_prior)
+    loss = - torch.logsumexp(rec_likelihood - kl_coef * kldiv_z0, 0)
+    loss=torch.mean(loss)
+    return loss
+
+
+def compute_log_likelihood(pred, label, observe_std=0.01):
+    log_p = ((label - pred) ** 2) / (2 * observe_std * observe_std)
+    neg_log_p = -1 * log_p
+    return neg_log_p
+
+
 def msle(pred, label):
-    return np.around(mean_squared_error(label, pred, multioutput='raw_values'), 4)[0]
+    return np.around(np.mean(mean_squared_error(label, pred, multioutput='raw_values')), 4)
 
 
 def pcc(pred, label):
@@ -110,8 +127,8 @@ class Metric:
         targets, preds, labels = self.temp[dtype]['target'], self.temp[dtype]['pred'], self.temp[dtype]['label']
 
         targets, preds, labels = np.concatenate(targets, axis=0), \
-                                 np.concatenate(preds, axis=0), \
-                                 np.concatenate(labels, axis=0)
+            np.concatenate(preds, axis=0), \
+            np.concatenate(labels, axis=0)
         self.temp[dtype]['target'] = targets
         self.temp[dtype]['pred'] = preds
         self.temp[dtype]['label'] = labels
@@ -139,3 +156,9 @@ class Metric:
         for metric in ['loss', 'msle', 'male', 'mape', 'pcc']:
             s.append(f'{metric}:{self.temp[dtype][metric]:.4f}')
         self.logger.info(f'{dtype}: ' + '\t'.join(s))
+
+
+if __name__ == '__main__':
+    pred = np.array([2.5, 3.5, 4.5])
+    label = np.array([2, 3, 4])
+    print(male(pred, label))

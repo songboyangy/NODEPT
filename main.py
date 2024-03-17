@@ -36,6 +36,7 @@ parser.add_argument('--use_temporal', action='store_true',
                     help='whether to adopt temporal learning in the cascade embedding module')
 parser.add_argument('--lambda', type=float, default=0.5,
                     help='the weight to balance the static result and dynamic result')
+parser.add_argument('--solver', type=str, default="euler", help='dopri5,rk4,euler')
 try:
     args = parser.parse_args()
 except:
@@ -56,13 +57,14 @@ ch.setFormatter(formatter)
 logger.addHandler(fh)
 logger.addHandler(ch)
 encoder_data, decoder_data = get_data(dataset=param['dataset'], observe_time=param['observe_time'],
-                                      predict_time=param['predict_time'], condition_time=param['condition_time'],
+                                      predict_time=param['predict_time'], restruct_time=param["restruct_time"],
                                       train_time=param['train_time'], val_time=param['val_time'],
                                       test_time=param['test_time'], time_unit=param['time_unit'],
                                       log=logger, param=param)
 logger.info(param)
 result = defaultdict(lambda: 0)
 torch.set_num_threads(5)
+time_steps_to_predict = torch.tensor(np.arange(param['observe_time'], param["restruct_time"]))
 for num in range(param['run']):
     logger.info(f'begin runs:{num}')
     my_seed = num
@@ -71,17 +73,17 @@ for num in range(param['run']):
     torch.manual_seed(my_seed)
     device_string = 'cuda:{}'.format(param['gpu']) if torch.cuda.is_available() else 'cpu'
     device = torch.device(device_string)
-    model = CTCP(device=device, node_dim=param['node_dim'], embedding_module_type=param['embedding_module'],
+    model = CTCP(args=param, device=device, node_dim=param['node_dim'], embedding_module_type=param['embedding_module'],
                  state_updater_type='gru', predictor=param['predictor'], time_enc_dim=param['time_dim'],
                  single=param['single'], ntypes={'user', 'cas'}, dropout=param['dropout'],
                  n_nodes=param['node_num'], max_time=param['max_time'], use_static=param['use_static'],
                  merge_prob=param['lambda'], max_global_time=param['max_global_time'], use_dynamic=param['use_dynamic'],
-                 use_temporal=param['use_temporal'], use_structural=param['use_structural'])
+                 use_temporal=param['use_temporal'], use_structural=param['use_structural'],time_steps_to_predict=time_steps_to_predict)
     metric = Metric(path=f"{param['result_path']}_{num}.pkl", logger=logger, fig_path=f"fig/{param['prefix']}")
     early_stopper = EarlyStopMonitor(max_round=param['patience'], higher_better=False, tolerance=1e-3,
                                      save_path=param['model_path'],
                                      logger=logger, model=model, run=num)
-    train_model(num, encoder_data, model.to(device), logger, early_stopper, device, param, metric, result)
+    train_model(num, encoder_data,decoder_data, model.to(device), logger, early_stopper, device, param, metric, result)
 
 logger.info(
     f"Final: msle:{result['msle']:.4f} male:{result['male']:.4f} "

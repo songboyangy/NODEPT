@@ -72,7 +72,7 @@ def data_transformation(dataset, data,cas_popularity, time_unit, min_time, param
 
 
 # 划分数据集，将数据集划分为训练集、验证集和测试集，通过设置不同的标签来表征属于哪一个数据集
-def get_split_data(dataset, observe_time, predict_time, condition_time, time_unit, all_data, min_time, metadata, log,
+def get_split_data(dataset, observe_time, predict_time, restruct_time, time_unit, all_data, min_time, metadata, log,
                    param):
     def data_split(legal_cascades, train_portion=0.7, val_portion=0.15):  # 合法的级联进行划分以及id的映射
         """
@@ -114,7 +114,7 @@ def get_split_data(dataset, observe_time, predict_time, condition_time, time_uni
         m_data.extend(get_label(df, observe_time * time_unit, all_label))  # 怪不得呢，在这里乘了time_unit，利用这个方法做标记
         # ，以天为时间单位，其实在这一步以及删除掉了那些数据
     all_data = pd.concat(m_data, axis=0)  # 这样就得到了观测时间之前的所有交互数据
-    num_timestamps= condition_time-observe_time
+    num_timestamps= restruct_time-observe_time
     all_idx, type_map = data_split(all_data[all_data['label'] != -1]['cas'].values)  # 有转发行为的那些级联进行划分，有转发数据
     all_data['type'] = all_data['cas'].apply(lambda x: type_map[x])  # 将级联id映射为相应的type
     all_data = all_data[all_data['type'] != 0]
@@ -137,7 +137,7 @@ def get_split_data(dataset, observe_time, predict_time, condition_time, time_uni
 
 
 # 数据加载与预处理，返回一个Data对象，根据相应比例划分数据集，但是整个time有什么用，没看出来，难道再做一个验证吗
-def get_data(dataset, observe_time, predict_time, condition_time, train_time, val_time, test_time, time_unit,
+def get_data(dataset, observe_time, predict_time, restruct_time, train_time, val_time, test_time, time_unit,
              log: logging.Logger, param):
     a = time.time()
     """
@@ -157,7 +157,7 @@ def get_data(dataset, observe_time, predict_time, condition_time, train_time, va
     data.sort_values(by='id', inplace=True, ignore_index=True)  # 通过id进行了排序
     log.info(
         f"Min time is {min_time}, Train time is {train_time}, Val time is {val_time}, Test time is {test_time}, Time unit is {time_unit}")
-    return_data = get_split_data(dataset, observe_time, predict_time, condition_time, time_unit, data, min_time,
+    return_data = get_split_data(dataset, observe_time, predict_time, restruct_time, time_unit, data, min_time,
                                  metadata, log, param)
     b = time.time()
     log.info(f"Time cost for loading data is {b - a}s")

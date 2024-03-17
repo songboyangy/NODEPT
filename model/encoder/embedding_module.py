@@ -159,7 +159,7 @@ class AggregateEmbedding(EmbeddingModule):
         cas_history = pad_sequence(cas_history, batch_first=True).to(self.device)
         """set all position&time emb"""
         cas_times = pad_sequence(cas_times, batch_first=True).to(self.device)
-        cas_time_emb = self.time_position_encoder(cas_times.reshape(-1)).reshape(*cas_times.shape, -1)
+        cas_time_emb = self.time_position_encoder(cas_times.reshape(-1)).reshape(*cas_times.shape, -1)  # 在时间戳嵌入这个地方用到了
         single_range = list(range(cas_times.shape[1]))
         cas_pos = torch.tensor([single_range] * cas_times.shape[0]).to(self.device)
         cas_pos_emb = self.position_embedding(cas_pos)
