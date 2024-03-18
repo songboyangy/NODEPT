@@ -29,12 +29,13 @@ class DiffeqSolver(nn.Module):
         pred_y = odeint(self.ode_func, first_point, time_steps_to_predict,
                         rtol=self.odeint_rtol, atol=self.odeint_atol,
                         method=self.ode_method)
+        pred_y=pred_y.permute(1, 0, 2)
 
         return pred_y
 
 
 class CasODEFunc(nn.Module):
-    def __init__(self, input_dim, hidden_dim, output_dim, device, dropout=0.2):
+    def __init__(self, input_dim, output_dim, device, dropout=0.2):
         """
         input_dim: dimensionality of the input
         latent_dim: dimensionality used for ODE. Analog of a continous latent state
@@ -42,7 +43,7 @@ class CasODEFunc(nn.Module):
         super(CasODEFunc, self).__init__()
 
         self.device = device
-        self.func_net = CasSelf(input_dim, hidden_dim, dropout=dropout).to(device)
+        self.func_net = CasSelf(input_dim, output_dim, dropout=dropout).to(device)
         self.dropout = nn.Dropout(dropout)
 
     # 为什么返回的是梯度

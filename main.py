@@ -15,7 +15,7 @@ parser.add_argument('--dataset', type=str, help='dataset name ',
                     default='twitter', choices=['aps', 'twitter', 'weibo'])
 parser.add_argument('--bs', type=int, default=50, help='batch size')
 parser.add_argument('--prefix', type=str, default='test', help='prefix to name a trial')
-parser.add_argument('--epoch', type=int, default=5, help='number of epochs')
+parser.add_argument('--epoch', type=int, default=150, help='number of epochs')
 parser.add_argument('--lr', type=float, default=1e-4, help='learning rate')
 parser.add_argument('--run', type=int, default=1, help='number of runs')
 parser.add_argument('--gpu', type=int, default=0, help='idx for the gpu to use')
@@ -28,11 +28,11 @@ parser.add_argument('--embedding_module', type=str, default="aggregate", choices
                     help="type of embedding module")
 parser.add_argument('--single', action='store_true',
                     help='whether to use different state updaters and message functions for users and cascades')  # 是否使用不同的update函数
-parser.add_argument('--use_static', action='store_true', help='whether use static embedding for users')
-parser.add_argument('--use_dynamic', action='store_true', help='whether use dynamic embedding for users and cascades')
+parser.add_argument('--use_static', action='store_true',default=False, help='whether use static embedding for users')
+parser.add_argument('--use_dynamic', action='store_true',default=True, help='whether use dynamic embedding for users and cascades')
 parser.add_argument('--use_structural', action='store_true',
                     help='whether to adopt structural learning in the cascade embedding module')
-parser.add_argument('--use_temporal', action='store_true',
+parser.add_argument('--use_temporal', action='store_true',default=True,
                     help='whether to adopt temporal learning in the cascade embedding module')
 parser.add_argument('--lambda', type=float, default=0.5,
                     help='the weight to balance the static result and dynamic result')

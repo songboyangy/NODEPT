@@ -28,11 +28,12 @@ class CTCP(nn.Module):
         self.device = device
         self.cas_num = n_nodes['cas']
         self.user_num = n_nodes['user']
-        self.time_steps_to_predict = time_steps_to_predict
+        self.time_steps_to_predict = time_steps_to_predict.float().to(self.device)
         self.single = single
         self.hgraph = HGraph(num_user=n_nodes['user'], num_cas=n_nodes['cas'])
         self.time_encoder = get_time_encoder('difference', dimension=time_enc_dim, single=self.single)
         self.use_dynamic = use_dynamic
+        self.node_dim=node_dim
         self.dynamic_state = nn.ModuleDict({
             'user': DynamicState(n_nodes['user'], state_dimension=node_dim,
                                  input_dimension=node_dim, message_dimension=node_dim,
@@ -61,7 +62,7 @@ class CTCP(nn.Module):
                                                      max_global_time=max_global_time, use_dynamic=use_dynamic,
                                                      use_temporal=use_temporal, use_structural=use_structural)
         self.predictor = get_predictor(emb_dim=node_dim, predictor_type=predictor, merge_prob=merge_prob)
-        self.cas_ode = CasODE(ode_hidden_dim=node_dim, args=args)
+        self.cas_ode = CasODE(ode_hidden_dim=node_dim, args=args,device=device)
         self.encoder_z0 = EncodeZ0(emb_dim=node_dim)
 
     def update_state(self):
@@ -90,14 +91,14 @@ class CTCP(nn.Module):
         self.hgraph.insert(trans_cascades, source_nodes, destination_nodes, edge_times,
                            pub_times)  # 把这一个batch的数据插入到图中，形成图
         target_cascades = trans_cascades[target_idx]  # 这个真的可以做到吗，表面是否到达预测时间
-        pred = torch.zeros(len(trans_cascades)).to(self.device)
-        extra_info={}
+        pred = torch.zeros(len(trans_cascades),len(self.time_steps_to_predict)).to(self.device)
+        first_point=torch.zeros(len(trans_cascades),self.node_dim,2).to(self.device)
         if len(target_cascades) > 0:  # 存在到达了观测时间的级联，
             emb = self.embedding_module.compute_embedding(target_cascades)  # 这就对了，针对target来做计算embedding
             first_point_nor = self.encoder_z0(emb)
-            pred[target_idx],extra_info = self.cas_ode.get_reconstruction(first_point_nor=first_point_nor,
+            pred[target_idx],first_point[target_idx] = self.cas_ode.get_reconstruction(first_point_nor=first_point_nor,
                                                                time_steps_to_predict=self.time_steps_to_predict)  # 这个embedding是对什么的，这个不太对吧
-        return pred,extra_info
+        return pred,first_point
 
     def init_state(self):
         for ntype in self.ntypes:

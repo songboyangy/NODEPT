@@ -39,25 +39,27 @@ def eval_model(model: CTCP, eval: Data, decoder_data, device: torch.device, para
     epoch_metric = {}
     loss = {'train': [], 'val': [], 'test': []}
     z0_prior = Normal(torch.Tensor([0.0]).to(device), torch.Tensor([1.]).to(device))
+    i = 0
     with torch.no_grad():
         for x, label in tqdm(eval.loader(param['bs']), total=math.ceil(eval.length / param['bs']), desc='eval_or_test'):
+            i = i + 1
             src, dst, trans_cas, trans_time, pub_time, types = x
             index_dict = select_label(label, types)
             target_idx = index_dict['train'] | index_dict['val'] | index_dict['test']
             trans_time, pub_time, label = move_to_device(device, trans_time, pub_time, label)
-            pred, extra_info = model.forward(src, dst, trans_cas, trans_time, pub_time, target_idx)
-            first_point = extra_info['first_point']
+            pred, first_point = model.forward(src, dst, trans_cas, trans_time, pub_time, target_idx)
+            # first_point = extra_info['first_point']
             for dtype in ['train', 'val', 'test']:
                 idx = index_dict[dtype]
                 if sum(idx) > 0:
                     m_target = trans_cas[idx]
-                    m_label = torch.tensor([decoder_data[key] for key in m_target])
-                    m_label[m_label < 1] = 1
-                    # m_label = torch.log2(m_label)
+                    m_label = torch.tensor(np.array([decoder_data[key] for key in m_target])).to(device)
+                    m_label = m_label + 1
+                    m_label = torch.log2(m_label)
                     m_pred = pred[idx]
                     m_first_point = first_point[idx]
-                    loss[dtype].append(
-                        compute_loss(pred=m_pred, label=m_label, first_point=m_first_point, z0_prior=z0_prior).item())
+                    loss_tem = compute_loss(pred=m_pred, label=m_label, first_point=m_first_point, z0_prior=z0_prior)
+                    loss[dtype].append(loss_tem.item())
                     metric.update(target=m_target, pred=m_pred.cpu().numpy(), label=m_label.cpu().numpy(), dtype=dtype)
             model.update_state()
         for dtype in ['train', 'val', 'test']:
@@ -81,26 +83,29 @@ def train_model(num: int, dataset: Data, decoder_data, model: CTCP, logger: logg
         logger.info(f'Epoch {epoch}:')
         epoch_start = time.time()
         train_loss = []
+        train_kldiv_z0 = []
         for x, label in tqdm(train.loader(param['bs']), total=math.ceil(train.length / param['bs']),
                              desc='training'):
             src, dst, trans_cas, trans_time, pub_time, types = x  # 数据处理之后得到的吗，可以自动完成，tran_cas是级联id
             idx_dict = select_label(label, types)  # 训练集，与id的一个字典，label不等于-1代表到达了观测时间
             target_idx = idx_dict['train']  # 训练集的id
             trans_time, pub_time, label = move_to_device(device, trans_time, pub_time, label)
-            pred, extra_info = model.forward(src, dst, trans_cas, trans_time, pub_time, target_idx)
+            pred, first_point = model.forward(src, dst, trans_cas, trans_time, pub_time, target_idx)
             if sum(target_idx) > 0:
                 target, target_time = trans_cas[target_idx], trans_time[target_idx]
-                target_label = torch.tensor([decoder_data[key] for key in target])
-                target_label[target_label < 1] = 1
-                # target_label = torch.log2(target_label)  # 对数化
+                target_label = torch.tensor(np.array([decoder_data[key] for key in target]))
+                target_label = target_label + 1
+                target_label = torch.log2(target_label)  # 对数化
+                target_label = target_label.to(device)
                 target_pred = pred[target_idx]
-                first_point = extra_info['first_point']
+                target_first_point = first_point[target_idx]
                 optimizer.zero_grad()
                 # loss = loss_criterion(target_pred, target_label)  # loss是针对已经预测的来做的
-                loss = compute_loss(target_pred, target_label, first_point=first_point, z0_prior=z0_prior)
+                loss = compute_loss(target_pred, target_label, first_point=target_first_point, z0_prior=z0_prior)
                 loss.backward()
                 optimizer.step()
                 train_loss.append(loss.item())
+                # train_kldiv_z0.append(kldiv_z0)
             model.update_state()
             model.detach_state()
         epoch_end = time.time()

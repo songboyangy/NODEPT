@@ -44,7 +44,7 @@ def get_label(x: pd.DataFrame, observe_time, label):  # get信息流行度的增
 
 
 # 转化数据，将user与cascade转化为id，定义一个字典，然后对data进行转换
-def data_transformation(dataset, data,cas_popularity, time_unit, min_time, param):
+def data_transformation(dataset, data, cas_popularity, time_unit, min_time, param):
     if dataset == 'aps':
         data['pub_time'] = (pd.to_datetime(data['pub_time']) - pd.to_datetime(min_time)).apply(lambda x: x.days)
     else:
@@ -62,7 +62,7 @@ def data_transformation(dataset, data,cas_popularity, time_unit, min_time, param
     data['src'] = data['src'].apply(lambda x: user2id[x])
     data['dst'] = data['dst'].apply(lambda x: user2id[x])
     data['cas'] = data['cas'].apply(lambda x: cas2id[x])
-    #cas_popularity['cas']=cas_popularity.apply(lambda x: cas2id[x])
+    # cas_popularity['cas']=cas_popularity.apply(lambda x: cas2id[x])
     cas_popularity1 = {cas2id[cas]: array for cas, array in cas_popularity.items()}
     param['node_num'] = {'user': max(max(data['src']), max(data['dst'])) + 1, 'cas': max(data['cas']) + 1}
     param['max_global_time'] = max(data['abs_time'])
@@ -91,7 +91,7 @@ def get_split_data(dataset, observe_time, predict_time, restruct_time, time_unit
         else:
             idx = np.array([True] * len(m_metadata))
         cas = m_metadata[idx]['casid'].values
-        rng = np.random.default_rng(0)
+        rng = np.random.default_rng(42)
         rng.shuffle(cas)
         train_pos, val_pos = int(train_portion * len(cas)), int((train_portion + val_portion) * len(cas))
         train_cas, val_cas, test_cas = np.split(cas, [train_pos, val_pos])
@@ -109,31 +109,32 @@ def get_split_data(dataset, observe_time, predict_time, restruct_time, time_unit
     all_label = all_data[all_data['time'] < predict_time * time_unit].groupby(by='cas', as_index=False)['id'].count()
     all_label = dict(zip(all_label['cas'], all_label['id']))  # 这个id是什么，可以看一看,这个确实是流行度，
     m_data = []
-    all_data_condition= all_data.copy(deep=True)
+    all_data_condition = all_data.copy(deep=True)
     for cas, df in all_data.groupby(by='cas'):  # 对级联数据进行聚合
         m_data.extend(get_label(df, observe_time * time_unit, all_label))  # 怪不得呢，在这里乘了time_unit，利用这个方法做标记
         # ，以天为时间单位，其实在这一步以及删除掉了那些数据
     all_data = pd.concat(m_data, axis=0)  # 这样就得到了观测时间之前的所有交互数据
-    num_timestamps= restruct_time-observe_time
+    num_timestamps = restruct_time - observe_time
     all_idx, type_map = data_split(all_data[all_data['label'] != -1]['cas'].values)  # 有转发行为的那些级联进行划分，有转发数据
     all_data['type'] = all_data['cas'].apply(lambda x: type_map[x])  # 将级联id映射为相应的type
     all_data = all_data[all_data['type'] != 0]
-    cas_id=all_data['cas'].unique()
+    cas_id = all_data['cas'].unique()
     all_data_condition = all_data_condition[all_data_condition['cas'].isin(cas_id)]
-    cas_popularity_dict={}
+    cas_popularity_dict = {}
     for cas, df in all_data_condition.groupby(by='cas'):
-        popularity_array=np.zeros(num_timestamps)
-        for ts in range(1,num_timestamps+1):
-            popularity_array[ts]=df[df['time']<(observe_time+ts)*time_unit]['id'].count()
-        cas_popularity_dict[cas]=popularity_array
+        popularity_array = np.zeros(num_timestamps)
+        for ts in range(num_timestamps):
+            popularity_array[ts] = df[df['time'] <= (observe_time + ts) * time_unit]['id'].count()-df[df['time'] <= observe_time  * time_unit]['id'].count()
+        cas_popularity_dict[cas] = popularity_array
     """all_idx is used for baselines to select the cascade id, so it don't need to be remapped"""
-    cas_popularity=data_transformation(dataset, all_data,cas_popularity_dict ,time_unit, min_time, param)  # 到这里才开始转化时间了
-    all_data.to_csv(f'data/{dataset}_split.csv', index=False)
+    cas_popularity = data_transformation(dataset, all_data, cas_popularity_dict, time_unit, min_time,
+                                         param)  # 到这里才开始转化时间了
+    all_data.to_csv(f'data/{dataset}_split.csv', index=False)  # data中的label是增量，我这里面是直接的流行度
     pk.dump(all_idx, open(f'data/{dataset}_idx.pkl', 'wb'))
     log.info(
         f"Total Trans num is {len(all_data)}, Train cas num is {len(all_idx['train'])}, "
         f"Val cas num is {len(all_idx['val'])}, Test cas num is {len(all_idx['test'])}")
-    return Data(all_data, is_split=True),cas_popularity
+    return Data(all_data, is_split=True), cas_popularity
 
 
 # 数据加载与预处理，返回一个Data对象，根据相应比例划分数据集，但是整个time有什么用，没看出来，难道再做一个验证吗
