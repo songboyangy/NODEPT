@@ -1,19 +1,26 @@
 import numpy as np
 import torch
 import torch.nn as nn
+import utils.utils as utils
 
 
 class EncodeZ0(nn.Module):
     def __init__(self, emb_dim: int):
         super(EncodeZ0, self).__init__()
+        # self.lins = nn.Sequential(nn.Linear(emb_dim, emb_dim // 2),
+        #                           nn.ReLU(), nn.Linear(emb_dim // 2, 2 * emb_dim))
         self.lins = nn.Sequential(nn.Linear(emb_dim, emb_dim // 2),
-                                  nn.ReLU(), nn.Linear(emb_dim // 2, 2 * emb_dim))
+                                  nn.ReLU(),
+                                  nn.Linear(emb_dim // 2, emb_dim ),  # 新添加的线性层
+                                  nn.ReLU(),
+                                  nn.Linear(emb_dim , 2 * emb_dim))
+        utils.init_network_weights(self.lins)
 
     def forward(self, emb: torch.Tensor):
         h_out = self.lins(emb)
         mean, std = self.split_mean_mu(h_out)
-        std= std.abs()
-        return mean,std
+        std = std.abs()
+        return mean, std
 
     def split_mean_mu(self, h):
         last_dim = h.size()[-1] // 2

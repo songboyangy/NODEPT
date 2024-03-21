@@ -62,7 +62,7 @@ class CTCP(nn.Module):
                                                      max_global_time=max_global_time, use_dynamic=use_dynamic,
                                                      use_temporal=use_temporal, use_structural=use_structural)
         self.predictor = get_predictor(emb_dim=node_dim, predictor_type=predictor, merge_prob=merge_prob)
-        self.cas_ode = CasODE(ode_hidden_dim=node_dim, args=args,device=device)
+        self.cas_ode = CasODE(ode_hidden_dim=node_dim, args=args,device=device,dropout=dropout)
         self.encoder_z0 = EncodeZ0(emb_dim=node_dim)
 
     def update_state(self):

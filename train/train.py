@@ -32,7 +32,7 @@ def move_to_device(device, *args):
 
 # 重新又跑了一边，但是这一边不再更新网络的参数
 def eval_model(model: CTCP, eval: Data, decoder_data, device: torch.device, param: Dict, metric: Metric,
-               loss_criteria: _Loss, move_final: bool = False) -> Dict:
+               move_final: bool = False) -> Dict:
     model.eval()
     model.reset_state()
     metric.fresh()
@@ -58,7 +58,7 @@ def eval_model(model: CTCP, eval: Data, decoder_data, device: torch.device, para
                     m_label = torch.log2(m_label)
                     m_pred = pred[idx]
                     m_first_point = first_point[idx]
-                    loss_tem = compute_loss(pred=m_pred, label=m_label, first_point=m_first_point, z0_prior=z0_prior)
+                    loss_tem = compute_loss(pred=m_pred, label=m_label, first_point=m_first_point, z0_prior=z0_prior,observe_std=param['observe_std'])
                     loss[dtype].append(loss_tem.item())
                     metric.update(target=m_target, pred=m_pred.cpu().numpy(), label=m_label.cpu().numpy(), dtype=dtype)
             model.update_state()
@@ -76,7 +76,7 @@ def train_model(num: int, dataset: Data, decoder_data, model: CTCP, logger: logg
     logger.info('Start training citation')
     optimizer = torch.optim.Adam(model.parameters(), lr=param['lr'])
     z0_prior = Normal(torch.Tensor([0.0]).to(device), torch.Tensor([1.]).to(device))
-    loss_criterion = torch.nn.MSELoss()
+    #loss_criterion = torch.nn.MSELoss()
     for epoch in range(param['epoch']):
         model.reset_state()
         model.train()
@@ -101,7 +101,7 @@ def train_model(num: int, dataset: Data, decoder_data, model: CTCP, logger: logg
                 target_first_point = first_point[target_idx]
                 optimizer.zero_grad()
                 # loss = loss_criterion(target_pred, target_label)  # loss是针对已经预测的来做的
-                loss = compute_loss(target_pred, target_label, first_point=target_first_point, z0_prior=z0_prior)
+                loss = compute_loss(target_pred, target_label, first_point=target_first_point, z0_prior=z0_prior,observe_std=param['observe_std'])
                 loss.backward()
                 optimizer.step()
                 train_loss.append(loss.item())
@@ -109,11 +109,11 @@ def train_model(num: int, dataset: Data, decoder_data, model: CTCP, logger: logg
             model.update_state()
             model.detach_state()
         epoch_end = time.time()
-        epoch_metric = eval_model(model, val, decoder_data, device, param, metric, loss_criterion, move_final=False)
+        epoch_metric = eval_model(model, val, decoder_data, device, param, metric,  move_final=False)
         logger.info(f"Epoch{epoch}: time_cost:{epoch_end - epoch_start} train_loss:{np.mean(train_loss)}")
         for dtype in ['train', 'val', 'test']:
             metric.info(dtype)
-        if early_stopper.early_stop_check(epoch_metric['val']['msle']):
+        if early_stopper.early_stop_check(epoch_metric['val']['msle']): #检验是否到达需要停止，保存最优模型
             break
         else:
             ...
@@ -121,7 +121,7 @@ def train_model(num: int, dataset: Data, decoder_data, model: CTCP, logger: logg
     logger.info(f'Loading the best model at epoch {early_stopper.best_epoch}')
     load_model(model, param['model_path'], num)
     logger.info(f'Loaded the best model at epoch {early_stopper.best_epoch} for inference')
-    final_metric = eval_model(model, test, device, param, metric, loss_criterion, move_final=True)
+    final_metric = eval_model(model, test,decoder_data, device, param, metric, move_final=True)
     logger.info(f'Runs:{num}\n {metric.history}')
     metric.save()
     save_model(model, param['model_path'], num)
