@@ -74,6 +74,13 @@ class ExternalMemory(nn.Module):
                                     dim=0)
             self.mem_ptr = self.memory_size
 
+    def reset_memory(self):
+        """
+        将外部记忆重置为None，并将记忆指针mem_ptr设为0。
+        """
+        self.memory = None
+        self.mem_ptr = 0
+
     def forward(self, cascade_repr):
         if self.memory is None:
             self.initialize_memory(cascade_repr)

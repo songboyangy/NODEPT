@@ -22,6 +22,7 @@ def select_label(labels, types):  # 这个返回的应该是bool值，可以根�
     return {'train': train_idx, 'val': val_idx, 'test': test_idx}
 
 
+
 def move_to_device(device, *args):
     results = []
     for arg in args:
@@ -83,6 +84,7 @@ def train_model(num: int, dataset: Data, decoder_data, model: CTCP, logger: logg
     for epoch in range(param['epoch']):
         model.reset_state()
         model.train()
+        model.external_memory.reset_memory()
         logger.info(f'Epoch {epoch}:')
         epoch_start = time.time()
         train_loss = []
@@ -144,3 +146,24 @@ def train_model(num: int, dataset: Data, decoder_data, model: CTCP, logger: logg
     result['mape'] = np.round(result['mape'] + final_metric['test']['mape'] / param['run'], 4)
     result['male'] = np.round(result['male'] + final_metric['test']['male'] / param['run'], 4)
     result['pcc'] = np.round(result['pcc'] + final_metric['test']['pcc'] / param['run'], 4)
+
+
+def test_model(dataset: Data, decoder_data, model: CTCP, logger: logging.Logger,
+               device: torch.device, param: Dict, metric: Metric) -> Dict:
+    model = model.to(device)
+    logger.info('Testing the model')
+
+    # 加载最优模型
+    load_model(model, param['model_path'], 'best')
+    logger.info('Loaded the best model for testing')
+
+    # 使用 eval_model 函数评估模型
+    test_result = eval_model(model, dataset, decoder_data, device, param, metric, move_final=True)
+
+    # 输出评估结果
+    #logger.info(f'Test results:\n{test_result}')
+    logger.info(
+        f"Test result: msle:{test_result['msle']:.4f} male:{test_result['male']:.4f} "
+        f"mape:{test_result['mape']:.4f} pcc:{test_result['pcc']:.4f}")
+
+    return test_result

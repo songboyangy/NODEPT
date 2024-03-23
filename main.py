@@ -9,6 +9,7 @@ from utils.data_processing import get_data
 from train.train import train_model
 from utils.my_utils import EarlyStopMonitor, set_config, Metric
 from collections import defaultdict
+from train.train import test_model
 
 parser = argparse.ArgumentParser('hyper parameters of CTCP')
 parser.add_argument('--dataset', type=str, help='dataset name ',
@@ -99,6 +100,7 @@ for num in range(param['run']):
                                      save_path=param['model_path'],
                                      logger=logger, model=model, run=num)
     train_model(num, encoder_data, decoder_data, model.to(device), logger, early_stopper, device, param, metric, result)
+    #test_model(encoder_data, decoder_data, model, logger, device, param, metric)
 
 logger.info(
     f"Final: msle:{result['msle']:.4f} male:{result['male']:.4f} "
