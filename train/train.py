@@ -11,6 +11,8 @@ from typing import Tuple, Dict, Type
 from torch.nn.modules.loss import _Loss
 from torch.distributions.normal import Normal
 from utils.my_utils import compute_loss
+from torch.distributions.normal import Normal
+import torch.autograd.profiler as profiler
 
 
 def select_label(labels, types):  # 这个返回的应该是bool值，可以根据这个选出对于的位置
@@ -58,7 +60,8 @@ def eval_model(model: CTCP, eval: Data, decoder_data, device: torch.device, para
                     m_label = torch.log2(m_label)
                     m_pred = pred[idx]
                     m_first_point = first_point[idx]
-                    loss_tem = compute_loss(pred=m_pred, label=m_label, first_point=m_first_point, z0_prior=z0_prior,observe_std=param['observe_std'])
+                    loss_tem = compute_loss(pred=m_pred, label=m_label, first_point=m_first_point, z0_prior=z0_prior,
+                                            observe_std=param['observe_std'])
                     loss[dtype].append(loss_tem.item())
                     metric.update(target=m_target, pred=m_pred.cpu().numpy(), label=m_label.cpu().numpy(), dtype=dtype)
             model.update_state()
@@ -76,7 +79,7 @@ def train_model(num: int, dataset: Data, decoder_data, model: CTCP, logger: logg
     logger.info('Start training citation')
     optimizer = torch.optim.Adam(model.parameters(), lr=param['lr'])
     z0_prior = Normal(torch.Tensor([0.0]).to(device), torch.Tensor([1.]).to(device))
-    #loss_criterion = torch.nn.MSELoss()
+    # loss_criterion = torch.nn.MSELoss()
     for epoch in range(param['epoch']):
         model.reset_state()
         model.train()
@@ -84,36 +87,47 @@ def train_model(num: int, dataset: Data, decoder_data, model: CTCP, logger: logg
         epoch_start = time.time()
         train_loss = []
         train_kldiv_z0 = []
+        i = 0
+        # with profiler.profile(record_shapes=True, use_cuda=True) as prof:
         for x, label in tqdm(train.loader(param['bs']), total=math.ceil(train.length / param['bs']),
                              desc='training'):
             src, dst, trans_cas, trans_time, pub_time, types = x  # 数据处理之后得到的吗，可以自动完成，tran_cas是级联id
-            idx_dict = select_label(label, types)  # 训练集，与id的一个字典，label不等于-1代表到达了观测时间
-            target_idx = idx_dict['train']  # 训练集的id
+            index_dict = select_label(label, types)  # 训练集，与id的一个字典，label不等于-1代表到达了观测时间
+            i = i + 1
+            # if i>=500:
+            #     break
+            # target_idx = idx_dict['train']  # 训练集的id
+            # trans_time, pub_time, label = move_to_device(device, trans_time, pub_time, label)
+            # pred, first_point = model.forward(src, dst, trans_cas, trans_time, pub_time, target_idx)
+            target_idx = index_dict['train'] | index_dict['val'] | index_dict['test']
             trans_time, pub_time, label = move_to_device(device, trans_time, pub_time, label)
             pred, first_point = model.forward(src, dst, trans_cas, trans_time, pub_time, target_idx)
-            if sum(target_idx) > 0:
-                target, target_time = trans_cas[target_idx], trans_time[target_idx]
+            train_idx = index_dict['train']
+            if sum(train_idx) > 0:
+                target, target_time = trans_cas[train_idx], trans_time[train_idx]
                 target_label = torch.tensor(np.array([decoder_data[key] for key in target]))
                 target_label = target_label + 1
                 target_label = torch.log2(target_label)  # 对数化
                 target_label = target_label.to(device)
-                target_pred = pred[target_idx]
-                target_first_point = first_point[target_idx]
+                target_pred = pred[train_idx]
+                target_first_point = first_point[train_idx]
                 optimizer.zero_grad()
                 # loss = loss_criterion(target_pred, target_label)  # loss是针对已经预测的来做的
-                loss = compute_loss(target_pred, target_label, first_point=target_first_point, z0_prior=z0_prior,observe_std=param['observe_std'])
+                loss = compute_loss(target_pred, target_label, first_point=target_first_point, z0_prior=z0_prior,
+                                    observe_std=param['observe_std'])
                 loss.backward()
                 optimizer.step()
                 train_loss.append(loss.item())
                 # train_kldiv_z0.append(kldiv_z0)
             model.update_state()
             model.detach_state()
+        # prof.export_chrome_trace("profile_results.json")
         epoch_end = time.time()
-        epoch_metric = eval_model(model, val, decoder_data, device, param, metric,  move_final=False)
+        epoch_metric = eval_model(model, val, decoder_data, device, param, metric, move_final=False)
         logger.info(f"Epoch{epoch}: time_cost:{epoch_end - epoch_start} train_loss:{np.mean(train_loss)}")
         for dtype in ['train', 'val', 'test']:
             metric.info(dtype)
-        if early_stopper.early_stop_check(epoch_metric['val']['msle']): #检验是否到达需要停止，保存最优模型
+        if early_stopper.early_stop_check(epoch_metric['val']['msle']):  # 检验是否到达需要停止，保存最优模型
             break
         else:
             ...
@@ -121,7 +135,7 @@ def train_model(num: int, dataset: Data, decoder_data, model: CTCP, logger: logg
     logger.info(f'Loading the best model at epoch {early_stopper.best_epoch}')
     load_model(model, param['model_path'], num)
     logger.info(f'Loaded the best model at epoch {early_stopper.best_epoch} for inference')
-    final_metric = eval_model(model, test,decoder_data, device, param, metric, move_final=True)
+    final_metric = eval_model(model, test, decoder_data, device, param, metric, move_final=True)
     logger.info(f'Runs:{num}\n {metric.history}')
     metric.save()
     save_model(model, param['model_path'], num)

@@ -39,7 +39,9 @@ parser.add_argument('--lambda', type=float, default=0.5,
                     help='the weight to balance the static result and dynamic result')
 parser.add_argument('--solver', type=str, default="euler", help='dopri5,rk4,euler')
 parser.add_argument('--observe_std', type=float, default=0.1,
-                    help='the observe_std of std when compute loss')
+                    help='the observe_std of data when compute loss')
+parser.add_argument('--memory_size', type=int, default=32,
+                    help='external memory size')
 try:
     args = parser.parse_args()
 except:
@@ -67,7 +69,7 @@ ch.setFormatter(formatter)
 # 将文件处理器和流处理器添加到 logger 中
 logger.addHandler(fh)
 logger.addHandler(ch)
-
+logger.info(f'observe_time:{param["observe_time"]}  restruct_time:{param["restruct_time"]}')
 encoder_data, decoder_data = get_data(dataset=param['dataset'], observe_time=param['observe_time'],
                                       predict_time=param['predict_time'], restruct_time=param["restruct_time"],
                                       train_time=param['train_time'], val_time=param['val_time'],

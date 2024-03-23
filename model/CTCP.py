@@ -11,7 +11,7 @@ from model.time_encoder import get_time_encoder
 from utils.hgraph import HGraph
 from model.decoder.cas_ode import CasODE
 from model.encoder.encoder_z0 import EncodeZ0
-
+from model.decoder.memory import ExternalMemory
 
 class CTCP(nn.Module):
     def __init__(self, args, device: torch.device, time_steps_to_predict, node_dim: int = 100,
@@ -62,8 +62,10 @@ class CTCP(nn.Module):
                                                      max_global_time=max_global_time, use_dynamic=use_dynamic,
                                                      use_temporal=use_temporal, use_structural=use_structural)
         self.predictor = get_predictor(emb_dim=node_dim, predictor_type=predictor, merge_prob=merge_prob)
-        self.cas_ode = CasODE(ode_hidden_dim=node_dim, args=args,device=device,dropout=dropout)
+
         self.encoder_z0 = EncodeZ0(emb_dim=node_dim)
+        self.external_memory=ExternalMemory(cascade_dim=node_dim,memory_size=args['memory_size'],device=device)
+        self.cas_ode = CasODE(ode_hidden_dim=node_dim, args=args, device=device, dropout=dropout,external_memory=self.external_memory)
 
     def update_state(self):
         if self.use_dynamic:
@@ -98,6 +100,7 @@ class CTCP(nn.Module):
             first_point_nor = self.encoder_z0(emb)
             pred[target_idx],first_point[target_idx] = self.cas_ode.get_reconstruction(first_point_nor=first_point_nor,
                                                                time_steps_to_predict=self.time_steps_to_predict)  # 这个embedding是对什么的，这个不太对吧
+            self.external_memory.update_memory(emb)
         return pred,first_point
 
     def init_state(self):
