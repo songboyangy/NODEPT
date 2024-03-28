@@ -7,6 +7,7 @@ import pickle as pk
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 from torch.distributions.normal import Normal
 from torch.distributions import kl_divergence
+import time
 
 
 def save_model(model: nn.Module, save_path, run):
@@ -41,7 +42,7 @@ class EarlyStopMonitor(object):
             curr_val *= -1
         if self.last_best is None:
             self.last_best = curr_val
-            save_model(self.model, self.save_path, self.run)
+            save_model(self.model, self.save_path, self.run)  # 在这个地方保存了模型
         elif (curr_val - self.last_best) / np.abs(self.last_best) > self.tolerance:
             self.last_best = curr_val
             self.num_round = 0
@@ -57,7 +58,9 @@ class EarlyStopMonitor(object):
 
 def set_config(args):
     param = vars(args)
-    param['prefix'] = f'{args.prefix}_{args.dataset}_CTCP'
+    timestamp = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
+    # param['prefix'] = f'{args.prefix}_{args.dataset}_CTCP'
+    param['prefix'] = f'{args.prefix}_{args.dataset}_CTCP_{timestamp}'
     param['model_path'] = f"saved_models/{param['prefix']}"
     param['result_path'] = f"results/{param['prefix']}"
     param['log_path'] = f"log/{param['prefix']}.log"
@@ -66,7 +69,7 @@ def set_config(args):
     return param
 
 
-def compute_loss(pred, label, first_point, z0_prior, observe_std=0.01, kl_coef=1):
+def compute_loss(pred, label, first_point, z0_prior, observe_std=0.1, kl_coef=1):
     rec_likelihood = compute_log_likelihood(pred, label, observe_std)
     fp_mu, fp_std = first_point[:, :, 0], first_point[:, :, 1]
     fp_std = fp_std.abs()
@@ -78,7 +81,7 @@ def compute_loss(pred, label, first_point, z0_prior, observe_std=0.01, kl_coef=1
     return loss
 
 
-def compute_log_likelihood(pred, label, observe_std=0.1):
+def compute_log_likelihood(pred, label, observe_std=1.0):
     log_p = ((label - pred) ** 2) / (2 * observe_std * observe_std)
     neg_log_p = -1 * log_p
     neg_log_p = torch.mean(neg_log_p)
@@ -106,8 +109,14 @@ def mape(pred, label):
     label = 2 ** label
     pred = 2 ** pred
     result = np.mean(np.abs(np.log2(pred + 1) - np.log2(label + 1)) / np.log2(label + 2))
-    result=np.mean(result)
+    result = np.mean(result)
     return np.around(result, 4)
+
+
+def sample_single_point(predict_time, observe_time, pred, label):
+    index = predict_time - observe_time-1
+    single_pred, single_label = pred[:, index], label[:, index]
+    return single_pred,single_label
 
 
 class Metric:
@@ -143,7 +152,7 @@ class Metric:
         self.temp[dtype]['msle'] = msle(preds, labels)
         self.temp[dtype]['male'] = male(preds, labels)
         self.temp[dtype]['mape'] = mape(preds, labels)
-        #self.temp[dtype]['pcc'] = pcc(preds, labels)
+        # self.temp[dtype]['pcc'] = pcc(preds, labels)
         self.temp[dtype]['loss'] = loss
 
         if move_history:

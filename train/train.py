@@ -13,7 +13,7 @@ from torch.distributions.normal import Normal
 from utils.my_utils import compute_loss
 from torch.distributions.normal import Normal
 import torch.autograd.profiler as profiler
-
+from utils.my_utils import sample_single_point
 
 def select_label(labels, types):  # 这个返回的应该是bool值，可以根据这个选出对于的位置
     train_idx = (labels != -1) & (types == 1)
@@ -34,12 +34,14 @@ def move_to_device(device, *args):
 
 
 # 重新又跑了一边，但是这一边不再更新网络的参数
-def eval_model(model: CTCP, eval: Data, decoder_data, device: torch.device, param: Dict, metric: Metric,
-               move_final: bool = False) -> Dict:
+def eval_model(model: CTCP, eval: Data, decoder_data, device: torch.device, param: Dict, metric: Metric,single_metric: Metric,
+               move_final: bool = False):
     model.eval()
     model.reset_state()
     metric.fresh()
+    single_metric.fresh()
     epoch_metric = {}
+    single_timestamp_metric={}
     loss = {'train': [], 'val': [], 'test': []}
     z0_prior = Normal(torch.Tensor([0.0]).to(device), torch.Tensor([1.]).to(device))
     i = 0
@@ -65,16 +67,20 @@ def eval_model(model: CTCP, eval: Data, decoder_data, device: torch.device, para
                                             observe_std=param['observe_std'])
                     loss[dtype].append(loss_tem.item())
                     metric.update(target=m_target, pred=m_pred.cpu().numpy(), label=m_label.cpu().numpy(), dtype=dtype)
+                    single_pred,single_label=sample_single_point(param['predict_single_timestamp'],param['observe_time'],pred=m_pred.cpu().numpy(), label=m_label.cpu().numpy())
+                    single_metric.update(target=m_target,pred=single_pred,label=single_label,dtype=dtype)
             model.update_state()
         for dtype in ['train', 'val', 'test']:
             epoch_metric[dtype] = metric.calculate_metric(dtype, move_history=True, move_final=move_final,
                                                           loss=np.mean(loss[dtype]))
-        return epoch_metric
+            single_timestamp_metric[dtype]=single_metric.calculate_metric(dtype,move_history=True, move_final=move_final,
+                                                          loss=np.mean(loss[dtype]))
+        return epoch_metric,single_timestamp_metric
 
 
 def train_model(num: int, dataset: Data, decoder_data, model: CTCP, logger: logging.Logger,
                 early_stopper: EarlyStopMonitor,
-                device: torch.device, param: Dict, metric: Metric, result: Dict):
+                device: torch.device, param: Dict, metric: Metric, result: Dict,single_metric:Metric):
     train, val, test = dataset, dataset, dataset
     model = model.to(device)
     logger.info('Start training citation')
@@ -125,10 +131,13 @@ def train_model(num: int, dataset: Data, decoder_data, model: CTCP, logger: logg
             model.detach_state()
         # prof.export_chrome_trace("profile_results.json")
         epoch_end = time.time()
-        epoch_metric = eval_model(model, val, decoder_data, device, param, metric, move_final=False)
+        epoch_metric,single_timestamp_metric = eval_model(model, val, decoder_data, device, param, metric,single_metric,move_final=False)
         logger.info(f"Epoch{epoch}: time_cost:{epoch_end - epoch_start} train_loss:{np.mean(train_loss)}")
         for dtype in ['train', 'val', 'test']:
             metric.info(dtype)
+        logger.info(f'single_point_predict:{param["predict_single_timestamp"]}\n')
+        for dtype in ['train', 'val', 'test']:
+            single_metric.info(dtype)
         if early_stopper.early_stop_check(epoch_metric['val']['msle']):  # 检验是否到达需要停止，保存最优模型
             break
         else:
@@ -137,7 +146,7 @@ def train_model(num: int, dataset: Data, decoder_data, model: CTCP, logger: logg
     logger.info(f'Loading the best model at epoch {early_stopper.best_epoch}')
     load_model(model, param['model_path'], num)
     logger.info(f'Loaded the best model at epoch {early_stopper.best_epoch} for inference')
-    final_metric = eval_model(model, test, decoder_data, device, param, metric, move_final=True)
+    final_metric,single_timestamp_metric = eval_model(model, test, decoder_data, device, param, metric,single_metric, move_final=True)
     logger.info(f'Runs:{num}\n {metric.history}')
     metric.save()
     save_model(model, param['model_path'], num)
@@ -149,21 +158,24 @@ def train_model(num: int, dataset: Data, decoder_data, model: CTCP, logger: logg
 
 
 def test_model(dataset: Data, decoder_data, model: CTCP, logger: logging.Logger,
-               device: torch.device, param: Dict, metric: Metric) -> Dict:
+               device: torch.device, param: Dict, metric: Metric,single_mertic,model_path) -> Dict:
     model = model.to(device)
     logger.info('Testing the model')
 
     # 加载最优模型
-    load_model(model, param['model_path'], 'best')
+    load_model(model,model_path, 0)
     logger.info('Loaded the best model for testing')
 
     # 使用 eval_model 函数评估模型
-    test_result = eval_model(model, dataset, decoder_data, device, param, metric, move_final=True)
+    test_result,single_point_result = eval_model(model, dataset, decoder_data, device, param, metric,single_mertic, move_final=True)
 
     # 输出评估结果
     #logger.info(f'Test results:\n{test_result}')
     logger.info(
-        f"Test result: msle:{test_result['msle']:.4f} male:{test_result['male']:.4f} "
-        f"mape:{test_result['mape']:.4f} pcc:{test_result['pcc']:.4f}")
+        f"Test result: msle:{test_result['test']['msle']:.4f} male:{test_result['test']['male']:.4f} "
+        f"mape:{test_result['test']['mape']:.4f} pcc:{test_result['test']['pcc']:.4f}")
+    logger.info(
+        f"Test single point {param['predict_single_timestamp']} result: msle:{single_point_result['test']['msle']:.4f} male:{single_point_result['test']['male']:.4f} "
+        f"mape:{single_point_result['test']['mape']:.4f} pcc:{single_point_result['test']['pcc']:.4f}")
 
     return test_result

@@ -68,6 +68,7 @@ class CasExternalMemory(nn.Module):
             layers.append(nn.Dropout(p=dropout))
             in_features = hidden_dim
         layers.append(nn.Linear(in_features + hidden_dim, out_features))
+        
 
         self.evolve = nn.Sequential(*layers)
         self.dropout = nn.Dropout(p=dropout)
