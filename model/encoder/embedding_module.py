@@ -64,7 +64,8 @@ class ConcatEmbedding(EmbeddingModule):
         cas_embs += self.time_embedding(cas_pub_times)
         src_embs = torch.stack(src_embs, dim=0)
         dst_embs = torch.stack(dst_embs, dim=0)
-        return torch.cat([src_embs, dst_embs, cas_embs], dim=1)
+        #return torch.cat([src_embs, dst_embs, cas_embs], dim=1)
+        return torch.cat([cas_embs], dim=1)
 
 
 # 默认使用这一个embddding模块
@@ -82,7 +83,8 @@ class AggregateEmbedding(EmbeddingModule):
         self.time_position_encoder = TimeSlotEncoder(embedding_dimension, max_time, time_num)
         self.position_embedding = nn.Embedding(100, embedding_dimension)
         if self.use_dynamic:
-            dynamic_trans_input_dim = 3 * input_dimension
+            #dynamic_trans_input_dim = 3 * input_dimension
+            dynamic_trans_input_dim =  input_dimension
             self.concat_emb = ConcatEmbedding(dynamic_state, embedding_dimension, device, dropout, hgraph,
                                               max_global_time, global_time_num)  # 动态embedding
             if use_temporal:

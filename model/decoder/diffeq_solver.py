@@ -59,7 +59,7 @@ class CasODEFunc(nn.Module):
         """
 
         assert (not torch.isnan(z).any())
-        z = self.cas_external_memory(z)
-        grad_dy = self.cas_self(z)
+        grad_dy = self.cas_external_memory(z)
+        #grad_dy = self.cas_self(z)
 
         return grad_dy

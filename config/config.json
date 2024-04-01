@@ -2,7 +2,7 @@
   "twitter": {
     "observe_time": 2,
     "predict_time": 500,
-    "restruct_time": 10,
+    "restruct_time": 20,
     "time_unit": 86400,
     "train_time": 8,
     "val_time": 12,
