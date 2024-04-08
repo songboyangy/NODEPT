@@ -10,7 +10,7 @@ from train.train import train_model
 from utils.my_utils import EarlyStopMonitor, set_config, Metric
 from collections import defaultdict
 from train.train import test_model
-
+import ast
 parser = argparse.ArgumentParser('hyper parameters of CTCP')
 parser.add_argument('--dataset', type=str, help='dataset name ',
                     default='twitter', choices=['aps', 'twitter', 'weibo'])
@@ -43,14 +43,21 @@ parser.add_argument('--observe_std', type=float, default=0.1,
                     help='the observe_std of data when compute loss')
 parser.add_argument('--memory_size', type=int, default=32,
                     help='external memory size')
-parser.add_argument('--predict_single_timestamp', type=int, default=8,
-                    help='single_point_timestamp_to_predict')
+parser.add_argument('--predict_timestamps', type=str, default='',
+                    help='time_point_timestamp_to_predict')
+parser.add_argument('--test', action='store_true', default=False,
+                    help='is_train_model')
+
+
 try:
     args = parser.parse_args()
 except:
     parser.print_help()
     sys.exit(0)
 param = set_config(args)  # 设置超参数，这是utils中的一个函数
+param['predict_timestamps']=ast.literal_eval(args.predict_timestamps)
+##print(param['test'])
+#print(param['predict_timestamps'])
 # 禁用 matplotlib 的字体管理器的日志记录，避免不必要的警告
 logging.getLogger('matplotlib.font_manager').disabled = True
 # 设置日志记录的级别为 INFO 级别
@@ -82,7 +89,7 @@ logger.info(param)
 result = defaultdict(lambda: 0)
 torch.set_num_threads(5)
 time_steps_to_predict = torch.tensor(np.arange(param['observe_time'], param["restruct_time"]))
-model_path='saved_models/test_twitter_CTCP_2024-03-23_05-40-51'
+model_path='saved_models/test_twitter_CTCP_2024-04-07_12-42-25'
 for num in range(param['run']):
     logger.info(f'begin runs:{num}')
     my_seed = num
@@ -99,12 +106,17 @@ for num in range(param['run']):
                  use_temporal=param['use_temporal'], use_structural=param['use_structural'],
                  time_steps_to_predict=time_steps_to_predict)
     metric = Metric(path=f"{param['result_path']}_{num}.pkl", logger=logger, fig_path=f"fig/{param['prefix']}")
-    single_metric=Metric(path=f"{param['result_path']}_{num}_single.pkl", logger=logger, fig_path=f"fig/{param['prefix']}")
+    single_metric=Metric(path=f"{param['result_path']}_{num}_single.pkl", logger=logger, fig_path=f"fig/{param['prefix']}",flag=0)
     early_stopper = EarlyStopMonitor(max_round=param['patience'], higher_better=False, tolerance=1e-3,
                                      save_path=param['model_path'],
                                      logger=logger, model=model, run=num)
-    train_model(num, encoder_data, decoder_data, model.to(device), logger, early_stopper, device, param, metric, result,single_metric)
-    #test_model(encoder_data, decoder_data, model, logger, device, param, metric,single_metric,model_path=model_path)
+    if param['test']:
+        test_model(encoder_data, decoder_data, model, logger, device, param, metric, single_metric,
+                   model_path=model_path)
+    else:
+        train_model(num, encoder_data, decoder_data, model.to(device), logger, early_stopper, device, param, metric,
+                    result, single_metric)
+
 
 logger.info(
     f"Final: msle:{result['msle']:.4f} male:{result['male']:.4f} "

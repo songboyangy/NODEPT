@@ -8,14 +8,15 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 from torch.distributions.normal import Normal
 from torch.distributions import kl_divergence
 import time
+import ast
 
 
 def save_model(model: nn.Module, save_path, run):
-    torch.save(model.state_dict(), f'{save_path}_{run}.pth')
+    torch.save(model.state_dict(), f'{save_path}.pth')
 
 
 def load_model(model: nn.Module, load_path, run):
-    model_dict = torch.load(f"{load_path}_{run}.pth")
+    model_dict = torch.load(f"{load_path}.pth")
     model.load_state_dict(model_dict)
 
 
@@ -88,8 +89,11 @@ def compute_log_likelihood(pred, label, observe_std=1.0):
     return neg_log_p
 
 
-def msle(pred, label):
-    return np.around(np.mean(mean_squared_error(label, pred, multioutput='raw_values')), 4)
+def msle(pred, label, flag=1):
+    if flag == 1:
+        return np.around(np.mean(mean_squared_error(label, pred, multioutput='raw_values')), 4)
+    else:
+        return np.around(mean_squared_error(label, pred, multioutput='raw_values'), 4)
 
 
 def pcc(pred, label):
@@ -100,28 +104,39 @@ def pcc(pred, label):
 
 # def male(pred, label):
 #     return np.around(mean_absolute_error(label, pred, multioutput='raw_values'), 4)[0]
-def male(pred, label):
+def male(pred, label, flag=1):
     mae_per_sample = mean_absolute_error(label, pred, multioutput='raw_values')
-    return np.around(np.mean(mae_per_sample), 4)
+    if flag == 1:
+        return np.around(np.mean(mae_per_sample), 4)
+    else:
+        return np.around(mae_per_sample, 4)
 
 
-def mape(pred, label):
+def mape(pred, label, flag=1):
     label = 2 ** label
     pred = 2 ** pred
     result = np.mean(np.abs(np.log2(pred + 1) - np.log2(label + 1)) / np.log2(label + 2))
-    result = np.mean(result)
-    return np.around(result, 4)
+    if flag == 1:
+        result = np.mean(result)
+        return np.around(result, 4)
+    else:
+        return np.around(result, 4)
 
 
-def sample_single_point(predict_time, observe_time, pred, label):
-    index = predict_time - observe_time-1
-    single_pred, single_label = pred[:, index], label[:, index]
-    return single_pred,single_label
+def sample_multi_point(predict_points, observe_time, pred, label):
+    # for predict_point in predict_points
+    #     index = predict_point - observe_time-1
+    predict_points = np.array(predict_points)
+    predict_points = predict_points - observe_time - 1
+    multi_pred, multi_label = pred[:, predict_points], label[:, predict_points]
+    return multi_pred, multi_label
 
 
 class Metric:
-    def __init__(self, path, logger, fig_path):
+    def __init__(self, path, logger, fig_path, flag=1):
         self.template = {'target': [], 'pred': [], 'label': [], 'msle': 0, 'male': 0, 'pcc': 0, 'mape': 0, 'loss': 0}
+        self.mul_template = {'target': [], 'pred': [], 'label': [], 'msle': [], 'male': [], 'pcc': [], 'mape': [],
+                             'loss': []}  # 多个时间点的时间戳
         self.final = {'train': deepcopy(self.template), 'val': deepcopy(self.template), 'test': deepcopy(self.template)}
         self.history = {'train': {'msle': [], 'male': [], 'mape': [], 'pcc': [], 'loss': []},
                         'val': {'msle': [], 'male': [], 'mape': [], 'pcc': [], 'loss': []},
@@ -131,9 +146,15 @@ class Metric:
         self.path = path
         self.fig_path = fig_path
         self.logger = logger
+        self.flag = flag
 
     def fresh(self):
-        self.temp = {'train': deepcopy(self.template), 'val': deepcopy(self.template), 'test': deepcopy(self.template)}
+
+        self.temp = {'train': deepcopy(self.template), 'val': deepcopy(self.template),
+                     'test': deepcopy(self.template)}
+        # else:
+        #     self.temp = {'train': deepcopy(self.mul_template), 'val': deepcopy(self.mul_template),
+        #                  'test': deepcopy(self.mul_template)}
 
     def update(self, target, pred, label, dtype):
         self.temp[dtype]['target'].append(target)
@@ -149,9 +170,9 @@ class Metric:
         self.temp[dtype]['target'] = targets
         self.temp[dtype]['pred'] = preds
         self.temp[dtype]['label'] = labels
-        self.temp[dtype]['msle'] = msle(preds, labels)
-        self.temp[dtype]['male'] = male(preds, labels)
-        self.temp[dtype]['mape'] = mape(preds, labels)
+        self.temp[dtype]['msle'] = msle(preds, labels, self.flag)
+        self.temp[dtype]['male'] = male(preds, labels, self.flag)
+        self.temp[dtype]['mape'] = mape(preds, labels, self.flag)
         # self.temp[dtype]['pcc'] = pcc(preds, labels)
         self.temp[dtype]['loss'] = loss
 
