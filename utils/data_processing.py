@@ -36,7 +36,8 @@ def get_label(x: pd.DataFrame, observe_time, label):  # get信息流行度的增
     casid = x['cas'].values[0]  # 获取级联的ID
     if casid in label and id >= 10:  # 返回一个索引，如果这个id大于10，那么代表在observe_time之前有10个用户参与了这个级联，观测时间之前有10个用户参与了，才算在内
         length = min(id, 100) - 1
-        x['label'].iloc[length] = label[casid] - id  # 这个是什么意思  总的流行度减去对应observe_time的位置的流行度id
+        #x['label'].iloc[length] = label[casid] - id  # 这个是什么意思  总的流行度减去对应observe_time的位置的流行度id
+        x.iloc[length, x.columns.get_loc('label')] = label[casid] - id
         # ，也就是流行度的增量。仅仅改变了最终时间的label，观测时间的label
         return [x.iloc[:length + 1, :]]  # 观测时间之前的那些数据，进行了保留，返回了观测时间之前的那些数据
     else:

@@ -22,8 +22,14 @@ class ExternalMemory(nn.Module):
     def initialize_memory(self, cascade_repr):
         # 初始化外部记忆为一个全零张量
         self.memory = torch.zeros(self.memory_size, self.cascade_dim).to(self.device)
-        self.memory[0] = cascade_repr.detach()  # 将当前级联表示存入记忆
-        self.mem_ptr = 1  # 记忆指针,指向下一个可写入位置
+        batch_size = cascade_repr.size(0)
+        # 分离级联表示的梯度信息
+        cascade_repr_detached = cascade_repr.detach()
+        self.memory[self.mem_ptr:self.mem_ptr + batch_size] = cascade_repr_detached
+        self.mem_ptr += batch_size
+
+        # self.memory[0] = cascade_repr.detach()  # 将当前级联表示存入记忆
+        # self.mem_ptr = 1  # 记忆指针,指向下一个可写入位置
 
     # def attend(self, cascade_repr):
     #     # 计算注意力权重

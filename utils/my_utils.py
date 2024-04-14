@@ -115,7 +115,7 @@ def male(pred, label, flag=1):
 def mape(pred, label, flag=1):
     label = 2 ** label
     pred = 2 ** pred
-    result = np.mean(np.abs(np.log2(pred + 1) - np.log2(label + 1)) / np.log2(label + 2))
+    result = np.mean(np.abs(np.log2(pred + 1) - np.log2(label + 1)) / np.log2(label + 2),axis=0)
     if flag == 1:
         result = np.mean(result)
         return np.around(result, 4)

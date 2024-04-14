@@ -11,9 +11,9 @@
     "max_cas_size": 100
   },
   "weibo": {
-    "observe_time": 1,
+    "observe_time": 2,
     "predict_time": 500,
-    "restruct_time": 5,
+    "restruct_time": 15,
     "time_unit": 3600,
     "train_time": 10,
     "val_time": 13,
@@ -24,7 +24,7 @@
   "aps": {
     "observe_time": 5,
     "predict_time": 500,
-    "restruct_time": 15,
+    "restruct_time": 20,
     "time_unit": 365,
     "train_time": 84,
     "val_time": 94,

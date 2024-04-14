@@ -13,13 +13,13 @@ test
 
 ```shell
 
-python main.py --dataset twitter  --prefix test  --epoch 150 --lr 1e-4 --patience 10 --memory_size 16 --bs 64 --predict_timestamp [5,10,15] 
+python main.py --dataset twitter  --prefix w_o_DL  --epoch 150 --lr 1e-4 --patience 10 --memory_size 16 --bs 64 --predict_timestamp [5,10,15] --gpu 3  --use_temporal
 
-python main.py --dataset weibo  --prefix test  --epoch 150 --lr 1e-4 --patience 10 --memory_size 16 --bs 128 --predict_timestamp [5,6,7] --train Ture
+python main.py --dataset weibo  --prefix w_o_DL  --epoch 150 --lr 1e-4 --patience 10 --memory_size 16 --bs 128 --predict_timestamp [5,10,15] --use_temporal 
 
 python test.py --predict_timestamps 1,2,3
 
 
-python main.py --dataset weibo  --prefix test  --epoch 150 --lr 1e-4 --patience 10 --memory_size 16 --bs 128 --predict_timestamps [1,2,3] --train Ture
 
+python main.py --dataset aps  --prefix obs5_res20  --epoch 150 --lr 1e-4 --patience 10 --memory_size 16 --bs 64 --predict_timestamp [8,10,15,20] --gpu 3
 ```

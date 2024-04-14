@@ -29,12 +29,12 @@ parser.add_argument('--embedding_module', type=str, default="aggregate", choices
                     help="type of embedding module")
 parser.add_argument('--single', action='store_true',
                     help='whether to use different state updaters and message functions for users and cascades')  # 是否使用不同的update函数
-parser.add_argument('--use_static', action='store_true', default=False, help='whether use static embedding for users')
-parser.add_argument('--use_dynamic', action='store_true', default=True,
+parser.add_argument('--use_static', action='store_true',  help='whether use static embedding for users')
+parser.add_argument('--use_dynamic', action='store_true',
                     help='whether use dynamic embedding for users and cascades')
 parser.add_argument('--use_structural', action='store_true',
                     help='whether to adopt structural learning in the cascade embedding module')
-parser.add_argument('--use_temporal', action='store_true', default=True,
+parser.add_argument('--use_temporal', action='store_true',
                     help='whether to adopt temporal learning in the cascade embedding module')
 parser.add_argument('--lambda', type=float, default=0.5,
                     help='the weight to balance the static result and dynamic result')
@@ -46,7 +46,7 @@ parser.add_argument('--memory_size', type=int, default=32,
 parser.add_argument('--predict_timestamps', type=str, default='',
                     help='time_point_timestamp_to_predict')
 parser.add_argument('--test', action='store_true', default=False,
-                    help='is_train_model')
+                    help='is_test_model')
 
 
 try:
@@ -89,7 +89,7 @@ logger.info(param)
 result = defaultdict(lambda: 0)
 torch.set_num_threads(5)
 time_steps_to_predict = torch.tensor(np.arange(param['observe_time'], param["restruct_time"]))
-model_path='saved_models/test_twitter_CTCP_2024-04-07_12-42-25'
+model_path='saved_models/test_weibo_obs2_res15'
 for num in range(param['run']):
     logger.info(f'begin runs:{num}')
     my_seed = num
@@ -121,3 +121,4 @@ for num in range(param['run']):
 logger.info(
     f"Final: msle:{result['msle']:.4f} male:{result['male']:.4f} "
     f"mape:{result['mape']:.4f} pcc:{result['pcc']:.4f}")
+
