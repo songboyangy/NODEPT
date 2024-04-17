@@ -13,7 +13,7 @@ class CasODE(nn.Module):
     def __init__(self, ode_hidden_dim, args, device,external_memory, output_dim=1,dropout=0.2):
         super(CasODE, self).__init__()
         self.args = args
-        self.ode_fun = CasODEFunc(ode_hidden_dim, ode_hidden_dim, device=device,dropout=dropout,external_memory=external_memory)
+        self.ode_fun = CasODEFunc(ode_hidden_dim, ode_hidden_dim, device=device,dropout=dropout,external_memory=external_memory,params=args)
         self.diffeq_solver = DiffeqSolver(self.ode_fun, method=args['solver'])
         self.decoder = Decoder(latent_dim=ode_hidden_dim, output_dim=output_dim)
         self.ode_hidden_dim = ode_hidden_dim

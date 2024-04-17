@@ -34,6 +34,7 @@ class CTCP(nn.Module):
         self.time_encoder = get_time_encoder('difference', dimension=time_enc_dim, single=self.single)
         self.use_dynamic = use_dynamic
         self.node_dim=node_dim
+        self.args=args
         self.dynamic_state = nn.ModuleDict({
             'user': DynamicState(n_nodes['user'], state_dimension=node_dim,
                                  input_dimension=node_dim, message_dimension=node_dim,
@@ -100,7 +101,10 @@ class CTCP(nn.Module):
             first_point_nor = self.encoder_z0(emb)
             pred[target_idx],first_point[target_idx] = self.cas_ode.get_reconstruction(first_point_nor=first_point_nor,
                                                                time_steps_to_predict=self.time_steps_to_predict)  # 这个embedding是对什么的，这个不太对吧
-            self.external_memory.update_memory(emb)
+            if self.args['self_evolution']:
+                pass
+            else:
+                self.external_memory.update_memory(emb)
         return pred,first_point
 
     def init_state(self):

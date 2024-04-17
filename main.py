@@ -47,8 +47,10 @@ parser.add_argument('--predict_timestamps', type=str, default='',
                     help='time_point_timestamp_to_predict')
 parser.add_argument('--test', action='store_true', default=False,
                     help='is_test_model')
-
-
+parser.add_argument('--self_evolution', action='store_true', default=False,
+                    help='is_only_self_evolution')
+parser.add_argument('--test_model_path', type=str, default='',
+                    help='test_model_path')
 try:
     args = parser.parse_args()
 except:
@@ -56,6 +58,7 @@ except:
     sys.exit(0)
 param = set_config(args)  # 设置超参数，这是utils中的一个函数
 param['predict_timestamps']=ast.literal_eval(args.predict_timestamps)
+test_model_path=f"saved_models/{param['test_model_path']}"
 ##print(param['test'])
 #print(param['predict_timestamps'])
 # 禁用 matplotlib 的字体管理器的日志记录，避免不必要的警告
@@ -89,7 +92,7 @@ logger.info(param)
 result = defaultdict(lambda: 0)
 torch.set_num_threads(5)
 time_steps_to_predict = torch.tensor(np.arange(param['observe_time'], param["restruct_time"]))
-model_path='saved_models/test_weibo_obs2_res15'
+
 for num in range(param['run']):
     logger.info(f'begin runs:{num}')
     my_seed = num
@@ -112,7 +115,7 @@ for num in range(param['run']):
                                      logger=logger, model=model, run=num)
     if param['test']:
         test_model(encoder_data, decoder_data, model, logger, device, param, metric, single_metric,
-                   model_path=model_path)
+                   model_path=test_model_path)
     else:
         train_model(num, encoder_data, decoder_data, model.to(device), logger, early_stopper, device, param, metric,
                     result, single_metric)

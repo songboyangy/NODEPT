@@ -36,7 +36,7 @@ class DiffeqSolver(nn.Module):
 
 
 class CasODEFunc(nn.Module):
-    def __init__(self, input_dim, output_dim, device, external_memory, dropout=0.2):
+    def __init__(self, input_dim, output_dim, device, external_memory,params, dropout=0.2):
         """
         input_dim: dimensionality of the input
         latent_dim: dimensionality used for ODE. Analog of a continous latent state
@@ -48,6 +48,7 @@ class CasODEFunc(nn.Module):
         self.cas_external_memory = CasExternalMemory(in_features=input_dim, out_features=output_dim,
                                                      external_memory=external_memory, hidden_dim=input_dim)
         self.dropout = nn.Dropout(dropout)
+        self.params=params
 
     # 为什么返回的是梯度
     def forward(self, t_local, z, backwards=False):
@@ -57,9 +58,10 @@ class CasODEFunc(nn.Module):
         t_local: current time point
         z:  [H,E] concat by axis0. H is [K*N,D], E is[K*N*N,D], z is [K*N + K*N*N, D]
         """
-
         assert (not torch.isnan(z).any())
-        grad_dy = self.cas_external_memory(z)
-        #grad_dy = self.cas_self(z)
-
+        if self.params['self_evolution']:
+            grad_dy = self.cas_self(z)
+        else:
+            grad_dy = self.cas_external_memory(z)
+        #
         return grad_dy
