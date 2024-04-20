@@ -163,10 +163,12 @@ def train_model(num: int, dataset: Data, decoder_data, model: CTCP, logger: logg
             f"{dtype} result: msle:{single_point_result[dtype]['msle']} male:{single_point_result[dtype]['male']} "
             f"mape:{single_point_result[dtype]['mape']}")
 
-    result['msle'] = np.round(result['msle'] + final_metric['test']['msle'] / param['run'], 4)
-    result['mape'] = np.round(result['mape'] + final_metric['test']['mape'] / param['run'], 4)
-    result['male'] = np.round(result['male'] + final_metric['test']['male'] / param['run'], 4)
-    result['pcc'] = np.round(result['pcc'] + final_metric['test']['pcc'] / param['run'], 4)
+    # result['msle'] = np.round(result['msle'] + final_metric['test']['msle'] / param['run'], 4)
+    # result['mape'] = np.round(result['mape'] + final_metric['test']['mape'] / param['run'], 4)
+    # result['male'] = np.round(result['male'] + final_metric['test']['male'] / param['run'], 4)
+    # result['pcc'] = np.round(result['pcc'] + final_metric['test']['pcc'] / param['run'], 4)
+    result['mlse'].append(final_metric['test']['msle'])
+    result['mape'].append(final_metric['test']['mape'])
 
 
 def test_model(dataset: Data, decoder_data, model: CTCP, logger: logging.Logger,

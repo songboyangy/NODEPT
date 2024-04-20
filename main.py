@@ -89,39 +89,43 @@ encoder_data, decoder_data = get_data(dataset=param['dataset'], observe_time=par
                                       test_time=param['test_time'], time_unit=param['time_unit'],
                                       log=logger, param=param)
 logger.info(param)
-result = defaultdict(lambda: 0)
+#result = defaultdict(lambda: 0)
+result={'mlse':[],'mape':[]}
 torch.set_num_threads(5)
 time_steps_to_predict = torch.tensor(np.arange(param['observe_time'], param["restruct_time"]))
+memory_size_list=[8,16,24,32]
+for memory_size in memory_size_list:
+    param['memory_size']=memory_size
+    logger.info(f'memory_size:{memory_size}')
+    for num in range(param['run']):
+        logger.info(f'begin runs:{num}')
+        my_seed = num
+        random.seed(my_seed)  # 设置了seed
+        np.random.seed(my_seed)
+        torch.manual_seed(my_seed)
+        device_string = 'cuda:{}'.format(param['gpu']) if torch.cuda.is_available() else 'cpu'
+        device = torch.device(device_string)
+        model = CTCP(args=param, device=device, node_dim=param['node_dim'], embedding_module_type=param['embedding_module'],
+                     state_updater_type='gru', predictor=param['predictor'], time_enc_dim=param['time_dim'],
+                     single=param['single'], ntypes={'user', 'cas'}, dropout=param['dropout'],
+                     n_nodes=param['node_num'], max_time=param['max_time'], use_static=param['use_static'],
+                     merge_prob=param['lambda'], max_global_time=param['max_global_time'], use_dynamic=param['use_dynamic'],
+                     use_temporal=param['use_temporal'], use_structural=param['use_structural'],
+                     time_steps_to_predict=time_steps_to_predict)
+        metric = Metric(path=f"{param['result_path']}_{num}.pkl", logger=logger, fig_path=f"fig/{param['prefix']}")
+        single_metric=Metric(path=f"{param['result_path']}_{num}_single.pkl", logger=logger, fig_path=f"fig/{param['prefix']}",flag=0)
+        early_stopper = EarlyStopMonitor(max_round=param['patience'], higher_better=False, tolerance=1e-3,
+                                         save_path=param['model_path'],
+                                         logger=logger, model=model, run=num)
+        if param['test']:
+            test_model(encoder_data, decoder_data, model, logger, device, param, metric, single_metric,
+                       model_path=test_model_path)
+        else:
+            train_model(num, encoder_data, decoder_data, model.to(device), logger, early_stopper, device, param, metric,
+                        result, single_metric)
 
-for num in range(param['run']):
-    logger.info(f'begin runs:{num}')
-    my_seed = num
-    random.seed(my_seed)  # 设置了seed
-    np.random.seed(my_seed)
-    torch.manual_seed(my_seed)
-    device_string = 'cuda:{}'.format(param['gpu']) if torch.cuda.is_available() else 'cpu'
-    device = torch.device(device_string)
-    model = CTCP(args=param, device=device, node_dim=param['node_dim'], embedding_module_type=param['embedding_module'],
-                 state_updater_type='gru', predictor=param['predictor'], time_enc_dim=param['time_dim'],
-                 single=param['single'], ntypes={'user', 'cas'}, dropout=param['dropout'],
-                 n_nodes=param['node_num'], max_time=param['max_time'], use_static=param['use_static'],
-                 merge_prob=param['lambda'], max_global_time=param['max_global_time'], use_dynamic=param['use_dynamic'],
-                 use_temporal=param['use_temporal'], use_structural=param['use_structural'],
-                 time_steps_to_predict=time_steps_to_predict)
-    metric = Metric(path=f"{param['result_path']}_{num}.pkl", logger=logger, fig_path=f"fig/{param['prefix']}")
-    single_metric=Metric(path=f"{param['result_path']}_{num}_single.pkl", logger=logger, fig_path=f"fig/{param['prefix']}",flag=0)
-    early_stopper = EarlyStopMonitor(max_round=param['patience'], higher_better=False, tolerance=1e-3,
-                                     save_path=param['model_path'],
-                                     logger=logger, model=model, run=num)
-    if param['test']:
-        test_model(encoder_data, decoder_data, model, logger, device, param, metric, single_metric,
-                   model_path=test_model_path)
-    else:
-        train_model(num, encoder_data, decoder_data, model.to(device), logger, early_stopper, device, param, metric,
-                    result, single_metric)
 
-
-logger.info(
-    f"Final: msle:{result['msle']:.4f} male:{result['male']:.4f} "
-    f"mape:{result['mape']:.4f} pcc:{result['pcc']:.4f}")
-
+# logger.info(
+#     f"Final: msle:{result['msle']:.4f} male:{result['male']:.4f} "
+#     f"mape:{result['mape']:.4f} pcc:{result['pcc']:.4f}")
+logger.info(result)
