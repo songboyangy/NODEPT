@@ -82,21 +82,24 @@ ch.setFormatter(formatter)
 # 将文件处理器和流处理器添加到 logger 中
 logger.addHandler(fh)
 logger.addHandler(ch)
-logger.info(f'observe_time:{param["observe_time"]}  restruct_time:{param["restruct_time"]}')
-encoder_data, decoder_data = get_data(dataset=param['dataset'], observe_time=param['observe_time'],
-                                      predict_time=param['predict_time'], restruct_time=param["restruct_time"],
-                                      train_time=param['train_time'], val_time=param['val_time'],
-                                      test_time=param['test_time'], time_unit=param['time_unit'],
-                                      log=logger, param=param)
-logger.info(param)
-#result = defaultdict(lambda: 0)
+observe_time_list=[1,2,3,4]
+prediction_length=13
 result={'mlse':[],'mape':[]}
-torch.set_num_threads(5)
-time_steps_to_predict = torch.tensor(np.arange(param['observe_time'], param["restruct_time"]))
-memory_size_list=[8,16,24,32]
-for memory_size in memory_size_list:
-    param['memory_size']=memory_size
-    logger.info(f'memory_size:{memory_size}')
+for observe_time in observe_time_list:
+    param["observe_time"]=observe_time
+    param["restruct_time"]=observe_time+prediction_length
+    logger.info(f'observe_time:{param["observe_time"]}  restruct_time:{param["restruct_time"]}')
+    encoder_data, decoder_data = get_data(dataset=param['dataset'], observe_time=param['observe_time'],
+                                          predict_time=param['predict_time'], restruct_time=param["restruct_time"],
+                                          train_time=param['train_time'], val_time=param['val_time'],
+                                          test_time=param['test_time'], time_unit=param['time_unit'],
+                                          log=logger, param=param)
+    logger.info(param)
+    #result = defaultdict(lambda: 0)
+
+    torch.set_num_threads(5)
+    time_steps_to_predict = torch.tensor(np.arange(param['observe_time'], param["restruct_time"]))
+
     for num in range(param['run']):
         logger.info(f'begin runs:{num}')
         my_seed = num

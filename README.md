@@ -14,16 +14,17 @@ test
 
 ```shell
 
-python main.py --dataset twitter  --prefix ms_influence  --epoch 150 --lr 1e-4 --patience 10 --memory_size 16 --bs 64 --predict_timestamp [5,10,15] --gpu 2   --use_dynamic --use_temporal 
+python main.py --dataset twitter  --prefix obs_influence  --epoch 150 --lr 1e-4 --patience 10 --memory_size 16 --bs 64 --predict_timestamp [5] --gpu 2   --use_dynamic --use_temporal 
 
-python main.py --dataset weibo  --prefix ms_influence  --epoch 150 --lr 1e-4 --patience 10 --memory_size 16 --bs 128 --predict_timestamp [5,10,15]  --gpu 0 --use_dynamic --use_temporal 
+python main.py --dataset weibo  --prefix obs_influence  --epoch 150 --lr 1e-4 --patience 10 --memory_size 16 --bs 128 --predict_timestamp [5]  --gpu 0 --use_dynamic --use_temporal 
 
 python test.py --predict_timestamps 1,2,3
 
 
 
-python main.py --dataset aps  --prefix ms_influence  --epoch 150 --lr 1e-4 --patience 10 --memory_size 16 --bs 64 --predict_timestamp [8,10,15,20] --gpu 1   --use_dynamic --use_temporal 
+python main.py --dataset aps  --prefix obs_influence  --epoch 150 --lr 1e-4 --patience 10 --memory_size 16 --bs 64 --predict_timestamp [8] --gpu 1   --use_dynamic --use_temporal 
 ```
+
 # 训练完成的model
 ## twitter
 saved_models/test_twitter_CTCP_2024-04-13_14-02-47.pth
