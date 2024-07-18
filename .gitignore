@@ -4,3 +4,5 @@
 /results
 /log
 /figure
+**/__pycache__
+/temp_result
