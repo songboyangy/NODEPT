@@ -3,12 +3,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 # from torch_geometric.nn import global_mean_pool
-from torch_geometric.nn.conv import MessagePassing
-from torch_geometric.utils import softmax
+# from torch_geometric.nn.conv import MessagePassing
+# from torch_geometric.utils import softmax
 import math
 # import lib.utils as utils
-from torch_geometric.nn.inits import glorot
-from torch_scatter import scatter_add
+# from torch_geometric.nn.inits import glorot
+# from torch_scatter import scatter_add
 from model.decoder.memory import ExternalMemory
 
 

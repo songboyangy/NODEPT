@@ -3,7 +3,7 @@
 调试好的参数
 ```shell
 # 下面参数msle:2.0316
-python main.py --dataset twitter  --prefix test  --epoch 150 --lr 1e-4 --patience 10 --memory_size 16 --bs 64 --predict_single_timestamp 20
+python main.py --dataset twitter  --prefix test  --epoch 150 --lr 1e-4 --patience 10 --memory_size 16 --bs 64 --predict_single_timestamp 20 
 
 ```
 
@@ -14,7 +14,7 @@ test
 
 ```shell
 
-python main.py --dataset twitter  --prefix obs_influence  --epoch 150 --lr 1e-4 --patience 10 --memory_size 16 --bs 64 --predict_timestamp [5] --gpu 2   --use_dynamic --use_temporal 
+python main.py --dataset twitter  --prefix increase  --epoch 150 --lr 1e-4 --patience 10 --memory_size 16 --bs 64 --predict_timestamp [5] --gpu 2   --use_dynamic --use_temporal --observe_std 0.1
 
 python main.py --dataset weibo  --prefix obs_influence  --epoch 150 --lr 1e-4 --patience 10 --memory_size 16 --bs 128 --predict_timestamp [5]  --gpu 0 --use_dynamic --use_temporal 
 

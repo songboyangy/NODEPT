@@ -70,14 +70,27 @@ def set_config(args):
     return param
 
 
-def compute_loss(pred, label, first_point, z0_prior, observe_std=0.1, kl_coef=1):
+def compute_derivative(values):
+    derivatives = (values[:, 1:] - values[:, :-1])
+    return derivatives
+
+
+def compute_derivative_loss(pred, label):
+    dy_pred_dt = compute_derivative(pred)
+    dy_true_dt = compute_derivative(label)
+    derivative_loss = torch.mean(torch.abs(dy_pred_dt - dy_true_dt))
+    return derivative_loss
+
+
+def compute_loss(pred, label, first_point, z0_prior, observe_std=0.1, kl_coef=1, der_coef=5):
     rec_likelihood = compute_log_likelihood(pred, label, observe_std)
+    derivative_loss = compute_derivative_loss(pred, label)
     fp_mu, fp_std = first_point[:, :, 0], first_point[:, :, 1]
     fp_std = fp_std.abs()
     fp_distr = Normal(fp_mu, fp_std)
     kldiv_z0 = kl_divergence(fp_distr, z0_prior)
     kldiv_z0 = torch.mean(kldiv_z0)
-    loss = - torch.logsumexp(rec_likelihood - kl_coef * kldiv_z0, 0)
+    loss = - torch.logsumexp(rec_likelihood - kl_coef * kldiv_z0 - der_coef * derivative_loss, 0)
     loss = torch.mean(loss)
     return loss
 
@@ -115,7 +128,7 @@ def male(pred, label, flag=1):
 def mape(pred, label, flag=1):
     label = 2 ** label
     pred = 2 ** pred
-    result = np.mean(np.abs(np.log2(pred + 1) - np.log2(label + 1)) / np.log2(label + 2),axis=0)
+    result = np.mean(np.abs(np.log2(pred + 1) - np.log2(label + 1)) / np.log2(label + 2), axis=0)
     if flag == 1:
         result = np.mean(result)
         return np.around(result, 4)

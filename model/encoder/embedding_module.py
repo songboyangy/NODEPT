@@ -190,7 +190,7 @@ def get_embedding_module(module_type: str, dynamic_state: Mapping[str, DynamicSt
                          input_dimension: int, embedding_dimension: int, device: torch.device,
                          dropout: float = 0.1, hgraph: HGraph = None, max_time: float = 1.0,
                          time_num: int = 20, use_static: bool = False, user_num: int = -1,
-                         max_global_time: float = 100.0, global_time_num: int = 20,
+                         max_global_time: float = 100.0, global_time_num: int = 50,
                          use_dynamic: bool = True, use_temporal: bool = True,
                          use_structural: bool = True) -> EmbeddingModule:
     if module_type == "identity":

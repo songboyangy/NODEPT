@@ -82,7 +82,7 @@ ch.setFormatter(formatter)
 # 将文件处理器和流处理器添加到 logger 中
 logger.addHandler(fh)
 logger.addHandler(ch)
-observe_time_list=[1,2,3,4]
+observe_time_list=[2]
 prediction_length=13
 result={'mlse':[],'mape':[]}
 for observe_time in observe_time_list:
