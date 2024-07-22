@@ -4,7 +4,7 @@ import torch
 from tqdm import tqdm
 from utils.my_utils import save_model, load_model, EarlyStopMonitor, Metric
 import time
-from model.CTCP import CTCP
+from model.ODEPT import ODEPT
 import math
 from utils.data_processing import Data
 from typing import Tuple, Dict, Type
@@ -34,7 +34,7 @@ def move_to_device(device, *args):
 
 
 # 重新又跑了一边，但是这一边不再更新网络的参数
-def eval_model(model: CTCP, eval: Data, decoder_data, device: torch.device, param: Dict, metric: Metric,
+def eval_model(model, eval: Data, decoder_data, device: torch.device, param: Dict, metric: Metric,
                single_metric: Metric,
                move_final: bool = False):
     model.eval()
@@ -82,7 +82,7 @@ def eval_model(model: CTCP, eval: Data, decoder_data, device: torch.device, para
         return epoch_metric, single_timestamp_metric
 
 
-def train_model(num: int, dataset: Data, decoder_data, model: CTCP, logger: logging.Logger,
+def train_model(num: int, dataset: Data, decoder_data, model, logger: logging.Logger,
                 early_stopper: EarlyStopMonitor,
                 device: torch.device, param: Dict, metric: Metric, result: Dict, single_metric: Metric):
     train, val, test = dataset, dataset, dataset
@@ -171,7 +171,7 @@ def train_model(num: int, dataset: Data, decoder_data, model: CTCP, logger: logg
     result['mape'].append(final_metric['test']['mape'])
 
 
-def test_model(dataset: Data, decoder_data, model: CTCP, logger: logging.Logger,
+def test_model(dataset: Data, decoder_data, model, logger: logging.Logger,
                device: torch.device, param: Dict, metric: Metric, single_mertic, model_path) -> Dict:
     model = model.to(device)
     logger.info('Testing the model')

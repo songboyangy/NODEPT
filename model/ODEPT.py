@@ -13,7 +13,8 @@ from model.decoder.cas_ode import CasODE
 from model.encoder.encoder_z0 import EncodeZ0
 from model.decoder.memory import ExternalMemory
 
-class CTCP(nn.Module):
+
+class ODEPT(nn.Module):
     def __init__(self, args, device: torch.device, time_steps_to_predict, node_dim: int = 100,
                  embedding_module_type: str = "seq",
                  state_updater_type: str = "gru", predictor: str = 'linear', time_enc_dim: int = 8,
@@ -21,7 +22,7 @@ class CTCP(nn.Module):
                  max_time: float = None, use_static: bool = False, merge_prob: float = 0.5,
                  max_global_time: float = 0, use_dynamic: bool = False, use_temporal: bool = False,
                  use_structural: bool = False):
-        super(CTCP, self).__init__()
+        super(ODEPT, self).__init__()
         if max_time is None:
             max_time = {'user': 1, 'cas': 1}
         self.ntypes = ntypes
@@ -33,8 +34,8 @@ class CTCP(nn.Module):
         self.hgraph = HGraph(num_user=n_nodes['user'], num_cas=n_nodes['cas'])
         self.time_encoder = get_time_encoder('difference', dimension=time_enc_dim, single=self.single)
         self.use_dynamic = use_dynamic
-        self.node_dim=node_dim
-        self.args=args
+        self.node_dim = node_dim
+        self.args = args
         self.dynamic_state = nn.ModuleDict({
             'user': DynamicState(n_nodes['user'], state_dimension=node_dim,
                                  input_dimension=node_dim, message_dimension=node_dim,
@@ -65,8 +66,9 @@ class CTCP(nn.Module):
         self.predictor = get_predictor(emb_dim=node_dim, predictor_type=predictor, merge_prob=merge_prob)
 
         self.encoder_z0 = EncodeZ0(emb_dim=node_dim)
-        self.external_memory=ExternalMemory(cascade_dim=node_dim,memory_size=args['memory_size'],device=device)
-        self.cas_ode = CasODE(ode_hidden_dim=node_dim, args=args, device=device, dropout=dropout,external_memory=self.external_memory)
+        self.external_memory = ExternalMemory(cascade_dim=node_dim, memory_size=args['memory_size'], device=device)
+        self.cas_ode = CasODE(ode_hidden_dim=node_dim, args=args, device=device, dropout=dropout,
+                              external_memory=self.external_memory)
 
     def update_state(self):
         if self.use_dynamic:
@@ -74,7 +76,7 @@ class CTCP(nn.Module):
                 self.dynamic_state[ntype].store_cache()
 
     def forward(self, source_nodes: np.ndarray, destination_nodes: np.ndarray, trans_cascades: np.ndarray,
-                edge_times: torch.Tensor, pub_times: torch.Tensor, target_idx: np.ndarray) :
+                edge_times: torch.Tensor, pub_times: torch.Tensor, target_idx: np.ndarray):
         """
         given a batch of interactions, update the corresponding nodes' dynamic states and give the popularity of the
         cascades that have reached the observation time.
@@ -94,18 +96,18 @@ class CTCP(nn.Module):
         self.hgraph.insert(trans_cascades, source_nodes, destination_nodes, edge_times,
                            pub_times)  # 把这一个batch的数据插入到图中，形成图
         target_cascades = trans_cascades[target_idx]  # 这个真的可以做到吗，表面是否到达预测时间
-        pred = torch.zeros(len(trans_cascades),len(self.time_steps_to_predict)).to(self.device)
-        first_point=torch.zeros(len(trans_cascades),self.node_dim,2).to(self.device)
+        pred = torch.zeros(len(trans_cascades), len(self.time_steps_to_predict)).to(self.device)
+        first_point = torch.zeros(len(trans_cascades), self.node_dim, 2).to(self.device)
         if len(target_cascades) > 0:  # 存在到达了观测时间的级联，
             emb = self.embedding_module.compute_embedding(target_cascades)  # 这就对了，针对target来做计算embedding
             first_point_nor = self.encoder_z0(emb)
-            pred[target_idx],first_point[target_idx] = self.cas_ode.get_reconstruction(first_point_nor=first_point_nor,
-                                                               time_steps_to_predict=self.time_steps_to_predict)  # 这个embedding是对什么的，这个不太对吧
+            pred[target_idx], first_point[target_idx] = self.cas_ode.get_reconstruction(first_point_nor=first_point_nor,
+                                                                                        time_steps_to_predict=self.time_steps_to_predict)  # 这个embedding是对什么的，这个不太对吧
             if self.args['self_evolution']:
                 pass
             else:
                 self.external_memory.update_memory(emb)
-        return pred,first_point
+        return pred, first_point
 
     def init_state(self):
         for ntype in self.ntypes:

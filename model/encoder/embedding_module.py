@@ -5,7 +5,6 @@ from typing import Dict, Mapping, List, Union, Tuple
 from model.encoder.state.dynamic_state import DynamicState
 from torch.nn.utils.rnn import pad_sequence, pack_padded_sequence
 from model.time_encoder import TimeSlotEncoder
-from model.decoder.structural_aggregator import TreeAggregator
 import torch.nn.modules.module
 from utils.hgraph import HGraph
 import dgl
@@ -91,10 +90,6 @@ class AggregateEmbedding(EmbeddingModule):
                 dynamic_trans_input_dim += input_dimension
                 self.temporal_aggregator = nn.LSTM(input_size=input_dimension, hidden_size=embedding_dimension,
                                                    batch_first=True)
-            if use_structural:
-                dynamic_trans_input_dim += 2 * input_dimension
-                self.structural_agg_root = TreeAggregator(input_dimension, embedding_dimension, device, edge_time=True)
-                self.structural_agg_leaf = TreeAggregator(input_dimension, embedding_dimension, device, edge_time=True)
             self.trans = nn.Sequential(nn.Linear(in_features=dynamic_trans_input_dim, out_features=embedding_dimension),
                                        nn.ReLU())
         if self.use_static:
@@ -104,10 +99,6 @@ class AggregateEmbedding(EmbeddingModule):
             if use_temporal:
                 self.static_rnn = nn.LSTM(input_size=input_dimension, hidden_size=embedding_dimension, batch_first=True)
                 static_trans_input_dim += input_dimension
-            if use_structural:
-                self.static_root_gnn = TreeAggregator(input_dimension, embedding_dimension, device, edge_time=True)
-                self.static_leaf_gnn = TreeAggregator(input_dimension, embedding_dimension, device, edge_time=True)
-                static_trans_input_dim += 2 * input_dimension
             self.static_trans = nn.Sequential(
                 nn.Linear(in_features=static_trans_input_dim, out_features=embedding_dimension),
                 nn.ReLU())
@@ -122,13 +113,6 @@ class AggregateEmbedding(EmbeddingModule):
             cas_his_emb = pack_padded_sequence(cas_his_emb, lengths=length, batch_first=True, enforce_sorted=False)
             _, (h, c) = self.static_rnn.forward(cas_his_emb)
             final_embedding.append(h.squeeze(dim=0))
-        if self.use_structural:
-            root_feature = self.static_state(graph_root.ndata['id'])
-            leaf_feature = self.static_state(graph_leaf.ndata['id'])
-            graph_root.ndata['x'] = self.dropout(root_feature)
-            graph_leaf.ndata['x'] = self.dropout(leaf_feature)
-            root_emb, leaf_emb = self.static_root_gnn(graph_root), self.static_leaf_gnn(graph_leaf)
-            final_embedding.extend([root_emb, leaf_emb])
         return self.static_trans(torch.cat(final_embedding, dim=1))
 
     def compute_dynamic_emb(self, cascades: np.ndarray, cas_history: torch.Tensor, length: List[int],
@@ -143,13 +127,6 @@ class AggregateEmbedding(EmbeddingModule):
             cas_his_emb = pack_padded_sequence(cas_his_emb, lengths=length, batch_first=True, enforce_sorted=False)
             _, (h, c) = self.temporal_aggregator.forward(cas_his_emb)
             final_embedding.append(h.squeeze(dim=0))
-        if self.use_structural:
-            graph_root.ndata['x'] = self.dynamic_state['user'].get_state(graph_root.ndata['id'], 'dst',
-                                                                         from_cache=False)
-            graph_leaf.ndata['x'] = self.dynamic_state['user'].get_state(graph_leaf.ndata['id'], 'src',
-                                                                         from_cache=False)
-            root_emb, leaf_emb = self.structural_agg_root(graph_root), self.structural_agg_leaf(graph_leaf)
-            final_embedding.extend([root_emb, leaf_emb])
         return self.trans(torch.cat(final_embedding, dim=1))
 
     # 计算对应id的embedding
@@ -167,11 +144,6 @@ class AggregateEmbedding(EmbeddingModule):
         cas_pos_emb = self.position_embedding(cas_pos)
         """set graph feature"""
         graph_root, graph_leaf = None, None
-        if self.use_structural:
-            graph_root, graph_leaf = self.hgraph.get_cas_graph(cascades)
-            graph_root, graph_leaf = graph_root.to(self.device), graph_leaf.to(self.device)
-            graph_root.edata['time'] = self.time_position_encoder(graph_root.edata['time'])
-            graph_leaf.edata['time'] = self.time_position_encoder(graph_leaf.edata['time'])
         if self.use_dynamic:
             dynamic_emb = self.compute_dynamic_emb(cascades, cas_history, length, cas_time_emb, cas_pos_emb, graph_root,
                                                    graph_leaf)

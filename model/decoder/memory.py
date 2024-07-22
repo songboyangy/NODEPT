@@ -28,21 +28,6 @@ class ExternalMemory(nn.Module):
         self.memory[self.mem_ptr:self.mem_ptr + batch_size] = cascade_repr_detached
         self.mem_ptr += batch_size
 
-        # self.memory[0] = cascade_repr.detach()  # 将当前级联表示存入记忆
-        # self.mem_ptr = 1  # 记忆指针,指向下一个可写入位置
-
-    # def attend(self, cascade_repr):
-    #     # 计算注意力权重
-    #     query = self.query_proj(cascade_repr)  # (batch, attn_dim)
-    #     keys = self.key_proj(self.memory[:self.mem_ptr])  # (mem_ptr, attn_dim)
-    #     attn_weights = torch.bmm(query, keys.transpose(0, 1))  # (batch, mem_ptr)
-    #     attn_weights = torch.softmax(attn_weights, dim=-1)  # (batch, mem_ptr)
-    #
-    #     # 根据注意力权重聚合记忆
-    #     values = self.value_proj(self.memory[:self.mem_ptr])  # (mem_ptr, cascade_dim)
-    #     attended_repr = torch.bmm(attn_weights, values).squeeze(1)  # (batch, cascade_dim)
-    #
-    #     return attended_repr
     def attend(self, cascade_repr):
         # 计算注意力权重
         query = self.query_proj(cascade_repr)  # (batch, 1, attn_dim)
@@ -56,16 +41,6 @@ class ExternalMemory(nn.Module):
 
         return attended_repr
 
-    # def update_memory(self, cascade_repr):
-    #     batch_size = cascade_repr.size(0)
-    #     # 更新记忆
-    #     if self.mem_ptr + batch_size <= self.memory_size:
-    #         self.memory[self.mem_ptr:self.mem_ptr + batch_size] = cascade_repr
-    #         self.mem_ptr += batch_size
-    #     else:
-    #
-    #         self.memory = torch.cat([self.memory[self.mem_ptr + batch_size - self.memory_size:], cascade_repr], dim=0)
-    #         self.mem_ptr = self.memory_size
     def update_memory(self, cascade_repr):
         batch_size = cascade_repr.size(0)
         # 分离级联表示的梯度信息

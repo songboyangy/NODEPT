@@ -61,7 +61,7 @@ def set_config(args):
     param = vars(args)
     timestamp = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
     # param['prefix'] = f'{args.prefix}_{args.dataset}_CTCP'
-    param['prefix'] = f'{args.prefix}_{args.dataset}_CTCP_{timestamp}'
+    param['prefix'] = f'{args.prefix}_{args.dataset}_ODEPT_{timestamp}'
     param['model_path'] = f"saved_models/{param['prefix']}"
     param['result_path'] = f"results/{param['prefix']}"
     param['log_path'] = f"log/{param['prefix']}.log"

@@ -4,14 +4,14 @@ import random
 import argparse
 import torch
 import numpy as np
-from model.CTCP import CTCP
+from model.ODEPT import ODEPT
 from utils.data_processing import get_data
 from train.train import train_model
 from utils.my_utils import EarlyStopMonitor, set_config, Metric
 from collections import defaultdict
 from train.train import test_model
 import ast
-parser = argparse.ArgumentParser('hyper parameters of CTCP')
+parser = argparse.ArgumentParser('hyper parameters of ODEPT')
 parser.add_argument('--dataset', type=str, help='dataset name ',
                     default='twitter', choices=['aps', 'twitter', 'weibo'])
 parser.add_argument('--bs', type=int, default=50, help='batch size')
@@ -107,7 +107,7 @@ for observe_time in observe_time_list:
         torch.manual_seed(my_seed)
         device_string = 'cuda:{}'.format(param['gpu']) if torch.cuda.is_available() else 'cpu'
         device = torch.device(device_string)
-        model = CTCP(args=param, device=device, node_dim=param['node_dim'], embedding_module_type=param['embedding_module'],
+        model = ODEPT(args=param, device=device, node_dim=param['node_dim'], embedding_module_type=param['embedding_module'],
                      state_updater_type='gru', predictor=param['predictor'], time_enc_dim=param['time_dim'],
                      single=param['single'], ntypes={'user', 'cas'}, dropout=param['dropout'],
                      n_nodes=param['node_num'], max_time=param['max_time'], use_static=param['use_static'],
