@@ -3,7 +3,7 @@ import time
 import pickle as pk
 import numpy as np
 import pandas as pd
-
+import sys
 
 # 处理数据，完成对数据的预处理和划分，根据type判断是训练集、验证机、测试集
 # observe_time观测时间，希望考虑的时间,到底是什么
@@ -119,6 +119,8 @@ def get_split_data(dataset, observe_time, predict_time, restruct_time, time_unit
     all_idx, type_map = data_split(all_data[all_data['label'] != -1]['cas'].values)  # 有转发行为的那些级联进行划分，有转发数据
     all_data['type'] = all_data['cas'].apply(lambda x: type_map[x])  # 将级联id映射为相应的type
     all_data = all_data[all_data['type'] != 0]
+    # all_data.to_csv(f'data/{dataset}_casper.csv')
+    # # sys.exit()
     cas_id = all_data['cas'].unique()
     all_data_condition = all_data_condition[all_data_condition['cas'].isin(cas_id)]
     cas_popularity_dict = {}

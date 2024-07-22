@@ -73,8 +73,7 @@ fh = logging.FileHandler(f"{param['log_path']}", mode='w')
 fh.setLevel(logging.DEBUG)
 # 创建一个流处理器，将日志输出到控制台，设置级别为 WARN 级别
 ch = logging.StreamHandler()
-ch.setLevel(logging.WARN)
-# 定义日志记录的格式
+ch.setLevel(logging.WARN)# 定义日志记录的格式
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 # 设置文件处理器和流处理器的格式
 fh.setFormatter(formatter)

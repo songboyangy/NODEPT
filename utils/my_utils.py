@@ -82,7 +82,7 @@ def compute_derivative_loss(pred, label):
     return derivative_loss
 
 
-def compute_loss(pred, label, first_point, z0_prior, observe_std=0.1, kl_coef=1, der_coef=2):
+def compute_loss(pred, label, first_point, z0_prior, observe_std=0.1, kl_coef=1, der_coef=50):
     rec_likelihood = compute_log_likelihood(pred, label, observe_std)
     derivative_loss = compute_derivative_loss(pred, label)
     fp_mu, fp_std = first_point[:, :, 0], first_point[:, :, 1]
