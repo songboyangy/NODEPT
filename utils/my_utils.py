@@ -179,7 +179,7 @@ class Metric:
 
         targets, preds, labels = np.concatenate(targets, axis=0), \
             np.concatenate(preds, axis=0), \
-            np.concatenate(labels, axis=0)
+            np.concatenate(labels, axis=0) #相当于把一个list中的array连接起来了，变成了一个二维的array，为了计算，仅仅,因为pred是三维的，所以连接起来之后是二维的，
         self.temp[dtype]['target'] = targets
         self.temp[dtype]['pred'] = preds
         self.temp[dtype]['label'] = labels
