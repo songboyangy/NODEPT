@@ -45,12 +45,15 @@ parser.add_argument('--memory_size', type=int, default=32,
                     help='external memory size')
 parser.add_argument('--predict_timestamps', type=str, default='',
                     help='time_point_timestamp_to_predict')
+parser.add_argument('--lambda1', type=int, default=50,
+                    help='der_coef')
 parser.add_argument('--test', action='store_true', default=False,
                     help='is_test_model')
 parser.add_argument('--self_evolution', action='store_true', default=False,
                     help='is_only_self_evolution')
 parser.add_argument('--test_model_path', type=str, default='',
                     help='test_model_path')
+
 try:
     args = parser.parse_args()
 except:

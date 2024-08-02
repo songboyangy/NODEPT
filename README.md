@@ -23,7 +23,7 @@ python test.py --predict_timestamps 1,2,3
 
 
 
-python main.py --dataset aps  --prefix increase50obs2  --epoch 150 --lr 1e-4 --patience 10 --memory_size 16 --bs 64 --predict_timestamp [5,10,15] --gpu 1   --use_dynamic --use_temporal 
+python main.py --dataset aps  --prefix increase50w_il  --epoch 150 --lr 1e-4 --patience 10 --memory_size 16 --bs 64 --predict_timestamp [5,10,15] --gpu 6   --use_dynamic --use_temporal --self_evolution
 
 python main.py --dataset twitter  --prefix increase_test  --epoch 150 --lr 1e-4 --patience 10 --memory_size 16 --bs 64 --predict_timestamp [5,10,15] --gpu 2   --use_dynamic --use_temporal --test --test_model_path increase_twitter_CTCP_2024-07-19_05-35-37
 ```

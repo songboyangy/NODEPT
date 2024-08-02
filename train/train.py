@@ -65,7 +65,7 @@ def eval_model(model, eval: Data, decoder_data, device: torch.device, param: Dic
                     m_pred = pred[idx]
                     m_first_point = first_point[idx]
                     loss_tem = compute_loss(pred=m_pred, label=m_label, first_point=m_first_point, z0_prior=z0_prior,
-                                            observe_std=param['observe_std'])
+                                            observe_std=param['observe_std'],der_coef=param['lambda1'])
                     loss[dtype].append(loss_tem.item())
                     metric.update(target=m_target, pred=m_pred.cpu().numpy(), label=m_label.cpu().numpy(), dtype=dtype)
                     single_pred, single_label = sample_multi_point(param['predict_timestamps'],
@@ -106,11 +106,6 @@ def train_model(num: int, dataset: Data, decoder_data, model, logger: logging.Lo
             src, dst, trans_cas, trans_time, pub_time, types = x  # 数据处理之后得到的吗，可以自动完成，tran_cas是级联id
             index_dict = select_label(label, types)  # 训练集，与id的一个字典，label不等于-1代表到达了观测时间
             i = i + 1
-            # if i>=500:
-            #     break
-            # target_idx = idx_dict['train']  # 训练集的id
-            # trans_time, pub_time, label = move_to_device(device, trans_time, pub_time, label)
-            # pred, first_point = model.forward(src, dst, trans_cas, trans_time, pub_time, target_idx)
             target_idx = index_dict['train'] | index_dict['val'] | index_dict['test']
             trans_time, pub_time, label = move_to_device(device, trans_time, pub_time, label)
             pred, first_point = model.forward(src, dst, trans_cas, trans_time, pub_time, target_idx)
@@ -124,9 +119,8 @@ def train_model(num: int, dataset: Data, decoder_data, model, logger: logging.Lo
                 target_pred = pred[train_idx]
                 target_first_point = first_point[train_idx]
                 optimizer.zero_grad()
-                # loss = loss_criterion(target_pred, target_label)  # loss是针对已经预测的来做的
                 loss = compute_loss(target_pred, target_label, first_point=target_first_point, z0_prior=z0_prior,
-                                    observe_std=param['observe_std'])
+                                    observe_std=param['observe_std'],der_coef=param['lambda1'])
                 loss.backward()
                 optimizer.step()
                 train_loss.append(loss.item())
