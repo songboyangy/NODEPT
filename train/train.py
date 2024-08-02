@@ -150,7 +150,10 @@ def train_model(num: int, dataset: Data, decoder_data, model, logger: logging.Lo
     logger.info(f'multi_predict_point:{param["predict_timestamps"]}')
     logger.info(f'Runs:{num}\n {metric.history}')
     metric.save()
-    save_model(model, param['model_path'], num)
+    model_save_path=param['model_path']
+    memory_size=param['memory_size']
+    model_save_path=f'{model_save_path}_{memory_size}'
+    save_model(model, model_save_path, num)
     logger.info(f"Predict time point {param['predict_timestamps']}")
     for dtype in ['train', 'val', 'test']:
         logger.info(
