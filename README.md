@@ -14,16 +14,16 @@ test
 
 ```shell
 
-python main.py --dataset twitter  --prefix increase50memory_influence  --epoch 150 --lr 1e-4 --patience 10 --memory_size 16 --bs 64 --predict_timestamp [5] --gpu 2   --use_dynamic --use_temporal 
+python main.py --dataset twitter  --prefix increase50lambda1_influence  --epoch 150 --lr 1e-4 --patience 10 --memory_size 16 --bs 64 --predict_timestamp [5] --gpu 2   --use_dynamic --use_temporal 
 
 
-python main.py --dataset weibo  --prefix increase50memory_influence  --epoch 150 --lr 1e-4 --patience 10 --memory_size 16 --bs 128 --predict_timestamp [5]  --gpu 0 --use_dynamic --use_temporal 
+python main.py --dataset weibo  --prefix increase50lambda1_influence  --epoch 150 --lr 1e-4 --patience 10 --memory_size 16 --bs 128 --predict_timestamp [5]  --gpu 3 --use_dynamic --use_temporal 
 
 python test.py --predict_timestamps 1,2,3
 
 
 
-python main.py --dataset aps  --prefix increase50memory_influence  --epoch 150 --lr 1e-4 --patience 10 --memory_size 16 --bs 64 --predict_timestamp [5,10,15] --gpu 1   --use_dynamic --use_temporal 
+python main.py --dataset aps  --prefix increase50lambda1_influence  --epoch 150 --lr 1e-4 --patience 10 --memory_size 16 --bs 64 --predict_timestamp [5,10,15] --gpu 1   --use_dynamic --use_temporal 
 
 python main.py --dataset twitter  --prefix increase_test  --epoch 150 --lr 1e-4 --patience 10 --memory_size 16 --bs 64 --predict_timestamp [5,10,15] --gpu 2   --use_dynamic --use_temporal --test --test_model_path increase_twitter_CTCP_2024-07-19_05-35-37
 ```

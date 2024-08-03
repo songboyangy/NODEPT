@@ -87,11 +87,11 @@ logger.addHandler(ch)
 # observe_time_list=[1,2,3,4]
 # prediction_length=13
 result={'mlse':[],'mape':[]}
-memory_size_list=[16,24,32,40]
+#memory_size_list=[16,24,32,40]
 # for observe_time in observe_time_list:
 #     param["observe_time"]=observe_time
 #     param["restruct_time"]=observe_time+prediction_length
-
+lambda1_list=[0,10,50,80]
 
 logger.info(f'observe_time:{param["observe_time"]}  restruct_time:{param["restruct_time"]}')
 encoder_data, decoder_data = get_data(dataset=param['dataset'], observe_time=param['observe_time'],
@@ -99,9 +99,9 @@ encoder_data, decoder_data = get_data(dataset=param['dataset'], observe_time=par
                                       train_time=param['train_time'], val_time=param['val_time'],
                                       test_time=param['test_time'], time_unit=param['time_unit'],
                                       log=logger, param=param)
-for memory_size in memory_size_list:
-    logger.info(f'memory_size:{memory_size}')
-    param['memory_size']=memory_size
+for lambda1 in lambda1_list:
+    logger.info(f'lambda1:{lambda1}')
+    param['lambda1']=lambda1
     logger.info(param)
     #result = defaultdict(lambda: 0)
 
