@@ -53,8 +53,8 @@ class SequenceStateUpdater(StateUpdater):
             last_time = self.state['user'].get_last_update(unique_node_ids)
             self.state['user'].set_last_update(unique_node_ids, torch.max(last_time, timestamps))
             state = self.state['user'].get_state(unique_node_ids, ntype)
-            updated_state = self.updaters['user'][ntype](user_messages[ntype], state)  # 得到更新后的状态
-            self.state['user'].set_state(unique_node_ids, updated_state, ntype, set_cache=True)  # 设置状态为更新后的状态
+            updated_state = self.updaters['user'][ntype](user_messages[ntype], state)
+            self.state['user'].set_state(unique_node_ids, updated_state, ntype, set_cache=True)
 
     def update_cas_state(self, unique_node_ids: List[int], unique_messages: torch.Tensor, timestamps: torch.Tensor):
         """update the dynamic states of cascades"""

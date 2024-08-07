@@ -31,8 +31,6 @@ parser.add_argument('--single', action='store_true',
 parser.add_argument('--use_static', action='store_true',  help='whether use static embedding for users')
 parser.add_argument('--use_dynamic', action='store_true',
                     help='whether use dynamic embedding for users and cascades')
-parser.add_argument('--use_structural', action='store_true',
-                    help='whether to adopt structural learning in the cascade embedding module')
 parser.add_argument('--use_temporal', action='store_true',
                     help='whether to adopt temporal learning in the cascade embedding module')
 parser.add_argument('--lambda', type=float, default=0.5,

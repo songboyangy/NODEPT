@@ -6,7 +6,7 @@ from model.encoder.state.dynamic_state import DynamicState
 from model.encoder.state.state_updater import get_state_updater
 from model.encoder.embedding_module import get_embedding_module
 from model.encoder.message.message_generator import get_message_generator
-from model.decoder.prediction import get_predictor
+
 from model.time_encoder import get_time_encoder
 from utils.hgraph import HGraph
 from model.decoder.cas_ode import CasODE
@@ -63,7 +63,6 @@ class ODEPT(nn.Module):
                                                      use_static=use_static, user_num=n_nodes['user'],
                                                      max_global_time=max_global_time, use_dynamic=use_dynamic,
                                                      use_temporal=use_temporal, use_structural=use_structural)
-        self.predictor = get_predictor(emb_dim=node_dim, predictor_type=predictor, merge_prob=merge_prob)
 
         self.encoder_z0 = EncodeZ0(emb_dim=node_dim)
         self.external_memory = ExternalMemory(cascade_dim=node_dim, memory_size=args['memory_size'], device=device)

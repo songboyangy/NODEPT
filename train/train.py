@@ -8,11 +8,10 @@ from model.ODEPT import ODEPT
 import math
 from utils.data_processing import Data
 from typing import Tuple, Dict, Type
-from torch.nn.modules.loss import _Loss
-from torch.distributions.normal import Normal
+
 from utils.my_utils import compute_loss
 from torch.distributions.normal import Normal
-import torch.autograd.profiler as profiler
+
 from utils.my_utils import sample_multi_point
 
 
@@ -135,7 +134,7 @@ def train_model(num: int, dataset: Data, decoder_data, model, logger: logging.Lo
         for dtype in ['train', 'val', 'test']:
             metric.info(dtype)
 
-        if early_stopper.early_stop_check(epoch_metric['val']['msle']):  # 检验是否到达需要停止，保存最优模型
+        if early_stopper.early_stop_check(epoch_metric['val']['msle']):
             break
         else:
             ...
