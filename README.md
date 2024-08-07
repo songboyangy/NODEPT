@@ -1,6 +1,8 @@
+# ODEPT
+
 The code for Continuous Dynamic Modeling via Neural ODEs for Popularity Trajectory Prediction 
 
-# requirements
+## requirements
 
 * python3 
 * pandas 
@@ -9,7 +11,7 @@ The code for Continuous Dynamic Modeling via Neural ODEs for Popularity Trajecto
 
 
 
-# run
+## run
 
 run command
 ```shell
