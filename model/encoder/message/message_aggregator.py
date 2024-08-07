@@ -24,7 +24,7 @@ class MessageAggregator(torch.nn.Module):
                   unique_timestamps is a tensor of shape (n_unique_node_ids, 1) with aggregated timestamps
         """
 
-#聚合相同节点的不同交互中的信息，平均还是最后，这是一个batch而言的，一个batch更新一次吗，聚合一个batch的信息
+
 class LastMessageAggregator(MessageAggregator):
     def __init__(self, device: torch.device):
         super(LastMessageAggregator, self).__init__(device)
@@ -45,7 +45,7 @@ class LastMessageAggregator(MessageAggregator):
                 unique_timestamps.append(messages[node_id][-1][1])
 
 
-        #在维度上连接两个张量
+
         unique_messages = torch.stack(unique_messages) if len(to_update_node_ids) > 0 else []
         unique_timestamps = torch.stack(unique_timestamps) if len(to_update_node_ids) > 0 else []
 

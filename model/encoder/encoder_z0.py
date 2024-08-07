@@ -7,11 +7,9 @@ import utils.utils as utils
 class EncodeZ0(nn.Module):
     def __init__(self, emb_dim: int):
         super(EncodeZ0, self).__init__()
-        # self.lins = nn.Sequential(nn.Linear(emb_dim, emb_dim // 2),
-        #                           nn.ReLU(), nn.Linear(emb_dim // 2, 2 * emb_dim))
         self.lins = nn.Sequential(nn.Linear(emb_dim, emb_dim // 2),
                                   nn.ReLU(),
-                                  nn.Linear(emb_dim // 2, emb_dim ),  # 新添加的线性层
+                                  nn.Linear(emb_dim // 2, emb_dim ),
                                   nn.ReLU(),
                                   nn.Linear(emb_dim , 2 * emb_dim))
         utils.init_network_weights(self.lins)

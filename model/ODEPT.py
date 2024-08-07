@@ -77,32 +77,20 @@ class ODEPT(nn.Module):
 
     def forward(self, source_nodes: np.ndarray, destination_nodes: np.ndarray, trans_cascades: np.ndarray,
                 edge_times: torch.Tensor, pub_times: torch.Tensor, target_idx: np.ndarray):
-        """
-        given a batch of interactions, update the corresponding nodes' dynamic states and give the popularity of the
-        cascades that have reached the observation time.
-        :param source_nodes: the sending users' id of the interactions, ndarray of shape (batch)
-        :param destination_nodes: the receiving users' id of the interactions, ndarray of shape (batch)
-        :param trans_cascades: the cascade id of the interactions,ndarray of shape (batch)，级联的id
-        :param edge_times: the happening timestamps of the interactions, tensor of shape (batch)
-        :param pub_times: the publication timestamps of the cascades in the interactions, tensor of shape (batch)
-        :param target_idx: a mask tensor to indicating which cascade has reached the observation time,
-               tensor of shape (batch)表面是否达到要预测的时间
-        :return pred: the popularity of cascades that have reached the observation time, tensor of shape (batch)
-        """
         if self.use_dynamic:
             nodes, messages, times = self.message_generator.get_message(source_nodes, destination_nodes,
                                                                         trans_cascades, edge_times, pub_times, 'all')
             self.state_updater.update_state(nodes, messages, times)
         self.hgraph.insert(trans_cascades, source_nodes, destination_nodes, edge_times,
-                           pub_times)  # 把这一个batch的数据插入到图中，形成图
-        target_cascades = trans_cascades[target_idx]  # 这个真的可以做到吗，表面是否到达预测时间
+                           pub_times)
+        target_cascades = trans_cascades[target_idx]
         pred = torch.zeros(len(trans_cascades), len(self.time_steps_to_predict)).to(self.device)
         first_point = torch.zeros(len(trans_cascades), self.node_dim, 2).to(self.device)
-        if len(target_cascades) > 0:  # 存在到达了观测时间的级联，
-            emb = self.embedding_module.compute_embedding(target_cascades)  # 这就对了，针对target来做计算embedding
+        if len(target_cascades) > 0:
+            emb = self.embedding_module.compute_embedding(target_cascades)
             first_point_nor = self.encoder_z0(emb)
             pred[target_idx], first_point[target_idx] = self.cas_ode.get_reconstruction(first_point_nor=first_point_nor,
-                                                                                        time_steps_to_predict=self.time_steps_to_predict)  # 这个embedding是对什么的，这个不太对吧
+                                                                                        time_steps_to_predict=self.time_steps_to_predict)
             if self.args['self_evolution']:
                 pass
             else:

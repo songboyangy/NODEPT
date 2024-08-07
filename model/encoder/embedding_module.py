@@ -10,7 +10,7 @@ from utils.hgraph import HGraph
 import dgl
 
 
-# 聚合各种embedding，静态，动态，不同的方式聚合embedding
+
 class EmbeddingModule(nn.Module):
     def __init__(self, dynamic_state: Mapping[str, DynamicState], embedding_dimension: int, device: torch.device,
                  dropout: float, hgraph: HGraph):
@@ -37,7 +37,6 @@ class IdentityEmbedding(EmbeddingModule):
         return self.dynamic_state['cas'].get_state(cascade, from_cache=True)
 
 
-# 用于将发送用户、接收用户和级联的动态状态连接在一起。，动态的那一部分，动态包括级联c,级联c的最后一个交互用户的state，
 class ConcatEmbedding(EmbeddingModule):
     def __init__(self, dynamic_state: Mapping[str, DynamicState], embedding_dimension: int, device: torch.device,
                  dropout: float, hgraph: HGraph, max_global_time: float = 0.0, global_time_num: int = 0):
@@ -45,7 +44,7 @@ class ConcatEmbedding(EmbeddingModule):
                                               dropout, hgraph)
         self.time_embedding = TimeSlotEncoder(embedding_dimension, max_global_time, global_time_num)
 
-    def compute_embedding(self, cascades):  # 输入级联，应该是级联id
+    def compute_embedding(self, cascades):
         """concat the dynamic states of the sending user, receiving user and cascade in the last interaction"""
         cas_interaction = self.hgraph.batch_cas_info()
         cas_pub_times = torch.tensor(self.hgraph.get_cas_pub_time(cascades), dtype=torch.float, device=self.device)
@@ -55,7 +54,7 @@ class ConcatEmbedding(EmbeddingModule):
             src_emb = self.dynamic_state['user'].get_state(src, 'src', from_cache=True).squeeze(dim=0)
             dst_emb = self.dynamic_state['user'].get_state(dst, 'dst', from_cache=True).squeeze(dim=0)
             if len(src) > 1:
-                src_emb = src_emb[-1]  # 源用户大于1，那么就是最后一个的动态
+                src_emb = src_emb[-1]
                 dst_emb = dst_emb[-1]
             src_embs.append(src_emb)
             dst_embs.append(dst_emb)
@@ -63,7 +62,6 @@ class ConcatEmbedding(EmbeddingModule):
         cas_embs += self.time_embedding(cas_pub_times)
         src_embs = torch.stack(src_embs, dim=0)
         dst_embs = torch.stack(dst_embs, dim=0)
-        #return torch.cat([src_embs, dst_embs, cas_embs], dim=1)
         return torch.cat([cas_embs], dim=1)
 
 

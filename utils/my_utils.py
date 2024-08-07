@@ -43,7 +43,7 @@ class EarlyStopMonitor(object):
             curr_val *= -1
         if self.last_best is None:
             self.last_best = curr_val
-            save_model(self.model, self.save_path, self.run)  # 在这个地方保存了模型
+            save_model(self.model, self.save_path, self.run)
         elif (curr_val - self.last_best) / np.abs(self.last_best) > self.tolerance:
             self.last_best = curr_val
             self.num_round = 0
@@ -60,7 +60,7 @@ class EarlyStopMonitor(object):
 def set_config(args):
     param = vars(args)
     timestamp = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
-    # param['prefix'] = f'{args.prefix}_{args.dataset}_CTCP'
+
     param['prefix'] = f'{args.prefix}_{args.dataset}_ODEPT_{timestamp}'
     param['model_path'] = f"saved_models/{param['prefix']}"
     param['result_path'] = f"results/{param['prefix']}"
@@ -101,6 +101,31 @@ def compute_log_likelihood(pred, label, observe_std=1.0):
     neg_log_p = torch.mean(neg_log_p)
     return neg_log_p
 
+def TPEM(true_values, predicted_values):
+
+    errors = []
+
+    length = true_values.shape[1]
+
+
+    h = 0.5
+
+
+    for i in range(0, length - 2, 2):
+        y0_error = (true_values[:, i] - predicted_values[:, i]) ** 2
+        y1_error = (true_values[:, i + 1] - predicted_values[:, i + 1]) ** 2
+        y2_error = (true_values[:, i + 2] - predicted_values[:, i + 2]) ** 2
+
+        interval_error = h / 3 * (y0_error + 4 * y1_error + y2_error)
+        interval_error = np.mean(interval_error)
+        interval_error = np.around(interval_error, 4)
+
+        errors.append(interval_error)
+    errors=np.array(errors)
+    TPEM=np.sqrt(np.mean(errors))
+
+    return TPEM
+
 
 def msle(pred, label, flag=1):
     if flag == 1:
@@ -115,8 +140,7 @@ def pcc(pred, label):
     return np.around(np.mean((pred - pred_mean) * (label - label_mean) / (pre_std * label_std), axis=0), 4)
 
 
-# def male(pred, label):
-#     return np.around(mean_absolute_error(label, pred, multioutput='raw_values'), 4)[0]
+
 def male(pred, label, flag=1):
     mae_per_sample = mean_absolute_error(label, pred, multioutput='raw_values')
     if flag == 1:
@@ -137,8 +161,7 @@ def mape(pred, label, flag=1):
 
 
 def sample_multi_point(predict_points, observe_time, pred, label):
-    # for predict_point in predict_points
-    #     index = predict_point - observe_time-1
+
     predict_points = np.array(predict_points)
     predict_points = predict_points - observe_time - 1
     multi_pred, multi_label = pred[:, predict_points], label[:, predict_points]
@@ -147,7 +170,7 @@ def sample_multi_point(predict_points, observe_time, pred, label):
 
 class Metric:
     def __init__(self, path, logger, fig_path, flag=1):
-        self.template = {'target': [], 'pred': [], 'label': [], 'msle': 0, 'male': 0, 'pcc': 0, 'mape': 0, 'loss': 0}
+        self.template = {'target': [], 'pred': [], 'label': [], 'msle': 0, 'male': 0, 'TPEM': 0, 'mape': 0, 'loss': 0}
         self.mul_template = {'target': [], 'pred': [], 'label': [], 'msle': [], 'male': [], 'pcc': [], 'mape': [],
                              'loss': []}  # 多个时间点的时间戳
         self.final = {'train': deepcopy(self.template), 'val': deepcopy(self.template), 'test': deepcopy(self.template)}
@@ -179,13 +202,14 @@ class Metric:
 
         targets, preds, labels = np.concatenate(targets, axis=0), \
             np.concatenate(preds, axis=0), \
-            np.concatenate(labels, axis=0) #相当于把一个list中的array连接起来了，变成了一个二维的array，为了计算，仅仅,因为pred是三维的，所以连接起来之后是二维的，
+            np.concatenate(labels, axis=0)
         self.temp[dtype]['target'] = targets
         self.temp[dtype]['pred'] = preds
         self.temp[dtype]['label'] = labels
         self.temp[dtype]['msle'] = msle(preds, labels, self.flag)
         self.temp[dtype]['male'] = male(preds, labels, self.flag)
         self.temp[dtype]['mape'] = mape(preds, labels, self.flag)
+        self.temp[dtype]['TPEM']=TPEM(true_values=labels,predicted_values=preds)
         # self.temp[dtype]['pcc'] = pcc(preds, labels)
         self.temp[dtype]['loss'] = loss
 
@@ -204,10 +228,9 @@ class Metric:
 
     def info(self, dtype):
         s = []
-        for metric in ['loss', 'msle', 'male', 'mape', 'pcc']:
+        for metric in ['loss', 'msle', 'male', 'mape']:
             s.append(f'{metric}:{self.temp[dtype][metric]:.4f}')
         self.logger.info(f'{dtype}: ' + '\t'.join(s))
-
 
 if __name__ == '__main__':
     pred = np.array([2.5, 3.5, 4.5])

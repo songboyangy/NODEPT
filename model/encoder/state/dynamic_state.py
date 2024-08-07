@@ -4,7 +4,7 @@ import numpy as np
 from typing import Sequence
 
 
-# 维护节点的动态状态，所有的节点的动态，一个标准的DynamicState块，可以实现get查询，set直接设置，get_last获取上一个状态，set_last，设置上一个状态
+
 class DynamicState(nn.Module):
     def __init__(self, n_nodes: int, state_dimension: int, input_dimension: int, message_dimension: int = None,
                  device: torch.device = None, single: bool = False):
@@ -18,28 +18,28 @@ class DynamicState(nn.Module):
         self.__init_state__()
 
     def __init_state__(self):
-        self.state = nn.ParameterDict().to(self.device)  # 一个字典，将参数组合成字典
+        self.state = nn.ParameterDict().to(self.device)
         # cache is used to store the updated states in each batch
-        self.cache = dict()  # 存储每一个batch中的state
+        self.cache = dict()
         state_dim = self.state_dimension
         state_src = nn.Parameter(torch.zeros((self.n_nodes, state_dim)).to(self.device),
                                  requires_grad=False)
         self.state['src'] = state_src
         self.cache['src'] = []
-        # 不是single就也初始化dst的state
+
         if not self.is_single:
             self.cache['dst'] = []
             self.state['dst'] = nn.Parameter(torch.zeros((self.n_nodes, state_dim)).to(self.device),
                                              requires_grad=False)
         self.last_update = nn.Parameter(torch.zeros(self.n_nodes).to(self.device),
-                                        requires_grad=False)#上一次更新的时间
+                                        requires_grad=False)
 
     def get_state(self, node_idxs: Sequence, type: str = 'src', from_cache: bool = False) -> torch.Tensor:
         if from_cache:
             node_map, temp_idx, temp_state = self.cache[type]
             return temp_state[list(map(lambda x: node_map[x], node_idxs))]
         else:
-            return self.state[type][node_idxs, :]  # 返回state，得到的是一个向量
+            return self.state[type][node_idxs, :]
 
     def set_state(self, node_idxs: Sequence, values: torch.Tensor, type: str = 'src', set_cache: bool = False):
         if set_cache:
@@ -68,7 +68,7 @@ class DynamicState(nn.Module):
             self.cache[u] = []
         self.last_update.data = self.last_update.new_zeros(self.last_update.shape)
 
-    # 将缓存中的状态更新到实际状态中的过程
+
     def store_cache(self):
         for ntype in self.cache:
             _, temp_node_idx, temp_state = self.cache[ntype]

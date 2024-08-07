@@ -9,7 +9,6 @@ from utils.data_processing import get_data
 from train.train import train_model
 from utils.my_utils import EarlyStopMonitor, set_config, Metric
 from collections import defaultdict
-from train.train import test_model
 import ast
 parser = argparse.ArgumentParser('hyper parameters of ODEPT')
 parser.add_argument('--dataset', type=str, help='dataset name ',
@@ -41,7 +40,7 @@ parser.add_argument('--lambda', type=float, default=0.5,
 parser.add_argument('--solver', type=str, default="euler", help='dopri5,rk4,euler')
 parser.add_argument('--observe_std', type=float, default=0.1,
                     help='the observe_std of data when compute loss')
-parser.add_argument('--memory_size', type=int, default=32,
+parser.add_argument('--memory_size', type=int, default=16,
                     help='external memory size')
 parser.add_argument('--predict_timestamps', type=str, default='',
                     help='time_point_timestamp_to_predict')
@@ -59,84 +58,64 @@ try:
 except:
     parser.print_help()
     sys.exit(0)
-param = set_config(args)  # 设置超参数，这是utils中的一个函数
+param = set_config(args)
 param['predict_timestamps']=ast.literal_eval(args.predict_timestamps)
 test_model_path=f"saved_models/{param['test_model_path']}"
-##print(param['test'])
-#print(param['predict_timestamps'])
-# 禁用 matplotlib 的字体管理器的日志记录，避免不必要的警告
+
 logging.getLogger('matplotlib.font_manager').disabled = True
-# 设置日志记录的级别为 INFO 级别
+
 logging.basicConfig(level=logging.INFO)
-# 设置日志记录的级别为 INFO 级别，并获取默认的 logger
+
 logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)  # 设置 logger 的级别为 DEBUG 级别
-# 创建一个文件处理器，将日志记录到指定的文件中，以覆盖写入模式 ('w') 打开，设置级别为 DEBUG 级别
+logger.setLevel(logging.DEBUG)
 fh = logging.FileHandler(f"{param['log_path']}", mode='w')
 fh.setLevel(logging.DEBUG)
-# 创建一个流处理器，将日志输出到控制台，设置级别为 WARN 级别
+
 ch = logging.StreamHandler()
-ch.setLevel(logging.WARN)# 定义日志记录的格式
+ch.setLevel(logging.WARN)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-# 设置文件处理器和流处理器的格式
+
 fh.setFormatter(formatter)
 ch.setFormatter(formatter)
-# 将文件处理器和流处理器添加到 logger 中
 logger.addHandler(fh)
 logger.addHandler(ch)
-# observe_time_list=[1,2,3,4]
-# prediction_length=13
-result={'mlse':[],'mape':[]}
-#memory_size_list=[16,24,32,40]
-# for observe_time in observe_time_list:
-#     param["observe_time"]=observe_time
-#     param["restruct_time"]=observe_time+prediction_length
-lambda1_list=[0,10,50,80]
 
+result={'mlse':[],'mape':[]}
 logger.info(f'observe_time:{param["observe_time"]}  restruct_time:{param["restruct_time"]}')
 encoder_data, decoder_data = get_data(dataset=param['dataset'], observe_time=param['observe_time'],
                                       predict_time=param['predict_time'], restruct_time=param["restruct_time"],
                                       train_time=param['train_time'], val_time=param['val_time'],
                                       test_time=param['test_time'], time_unit=param['time_unit'],
                                       log=logger, param=param)
-for lambda1 in lambda1_list:
-    logger.info(f'lambda1:{lambda1}')
-    param['lambda1']=lambda1
-    logger.info(param)
-    #result = defaultdict(lambda: 0)
 
-    torch.set_num_threads(5)
-    time_steps_to_predict = torch.tensor(np.arange(param['observe_time'], param["restruct_time"]))
+logger.info(param)
 
-    for num in range(param['run']):
-        logger.info(f'begin runs:{num}')
-        my_seed = num
-        random.seed(my_seed)  # 设置了seed
-        np.random.seed(my_seed)
-        torch.manual_seed(my_seed)
-        device_string = 'cuda:{}'.format(param['gpu']) if torch.cuda.is_available() else 'cpu'
-        device = torch.device(device_string)
-        model = ODEPT(args=param, device=device, node_dim=param['node_dim'], embedding_module_type=param['embedding_module'],
-                     state_updater_type='gru', predictor=param['predictor'], time_enc_dim=param['time_dim'],
-                     single=param['single'], ntypes={'user', 'cas'}, dropout=param['dropout'],
-                     n_nodes=param['node_num'], max_time=param['max_time'], use_static=param['use_static'],
-                     merge_prob=param['lambda'], max_global_time=param['max_global_time'], use_dynamic=param['use_dynamic'],
-                     use_temporal=param['use_temporal'], use_structural=param['use_structural'],
-                     time_steps_to_predict=time_steps_to_predict)
-        metric = Metric(path=f"{param['result_path']}_{num}.pkl", logger=logger, fig_path=f"fig/{param['prefix']}")
-        single_metric=Metric(path=f"{param['result_path']}_{num}_single.pkl", logger=logger, fig_path=f"fig/{param['prefix']}",flag=0)
-        early_stopper = EarlyStopMonitor(max_round=param['patience'], higher_better=False, tolerance=1e-3,
-                                         save_path=param['model_path'],
-                                         logger=logger, model=model, run=num)
-        if param['test']:
-            test_model(encoder_data, decoder_data, model, logger, device, param, metric, single_metric,
-                       model_path=test_model_path)
-        else:
-            train_model(num, encoder_data, decoder_data, model.to(device), logger, early_stopper, device, param, metric,
-                        result, single_metric)
+torch.set_num_threads(5)
+time_steps_to_predict = torch.tensor(np.arange(param['observe_time'], param["restruct_time"]))
+
+for num in range(param['run']):
+    logger.info(f'begin runs:{num}')
+    my_seed = num
+    random.seed(my_seed)  # 设置了seed
+    np.random.seed(my_seed)
+    torch.manual_seed(my_seed)
+    device_string = 'cuda:{}'.format(param['gpu']) if torch.cuda.is_available() else 'cpu'
+    device = torch.device(device_string)
+    model = ODEPT(args=param, device=device, node_dim=param['node_dim'], embedding_module_type=param['embedding_module'],
+                 state_updater_type='gru', predictor=param['predictor'], time_enc_dim=param['time_dim'],
+                 single=param['single'], ntypes={'user', 'cas'}, dropout=param['dropout'],
+                 n_nodes=param['node_num'], max_time=param['max_time'], use_static=param['use_static'],
+                 merge_prob=param['lambda'], max_global_time=param['max_global_time'], use_dynamic=param['use_dynamic'],
+                 use_temporal=param['use_temporal'], use_structural=param['use_structural'],
+                 time_steps_to_predict=time_steps_to_predict)
+    metric = Metric(path=f"{param['result_path']}_{num}.pkl", logger=logger, fig_path=f"fig/{param['prefix']}")
+    single_metric=Metric(path=f"{param['result_path']}_{num}_single.pkl", logger=logger, fig_path=f"fig/{param['prefix']}",flag=0)
+    early_stopper = EarlyStopMonitor(max_round=param['patience'], higher_better=False, tolerance=1e-3,
+                                     save_path=param['model_path'],
+                                     logger=logger, model=model, run=num)
 
 
-# logger.info(
-#     f"Final: msle:{result['msle']:.4f} male:{result['male']:.4f} "
-#     f"mape:{result['mape']:.4f} pcc:{result['pcc']:.4f}")
+    train_model(num, encoder_data, decoder_data, model.to(device), logger, early_stopper, device, param, metric,
+                    result, single_metric)
+
 logger.info(result)

@@ -2,7 +2,7 @@ import torch
 from torch import nn
 
 
-# 消息函数，对应于论文中的消息传递函数
+
 class MessageFunction(nn.Module):
     """
     Module which computes the message for a given interaction.

@@ -5,7 +5,7 @@ from model.encoder.state.dynamic_state import DynamicState
 from typing import Dict, Mapping, List, Sequence, Type
 
 
-# 更具消息更新用户的状态，传入消息用户更新节点的状态
+
 class StateUpdater(nn.Module):
     def update_state(self, unique_multi_node_ids: Dict, unique_multi_messages: Dict, unique_multi_timestamps: Dict,
                      type: str = 'all'):

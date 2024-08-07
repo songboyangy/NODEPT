@@ -2,8 +2,8 @@ import torch
 import torch.nn as nn
 from torchdiffeq import odeint_adjoint as odeint
 import numpy as np
-from model.decoder.gnn import CasSelf
-from model.decoder.gnn import CasExternalMemory
+from model.decoder.ode_fun import CasSelf
+from model.decoder.ode_fun import CasExternalMemory
 
 
 class DiffeqSolver(nn.Module):

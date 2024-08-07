@@ -13,7 +13,7 @@ class CasSelf(nn.Module):
             nn.ReLU(),
             nn.Linear(in_features // 2, out_features))
         self.dropout = nn.Dropout(p=dropout)
-        # Define layers or parameters here
+
 
     def forward(self, x):
         x = x + self.evolve(x)

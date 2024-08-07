@@ -12,30 +12,30 @@ class ExternalMemory(nn.Module):
         self.cascade_dim = cascade_dim
         self.attn_dim = attn_dim
 
-        self.memory = None  # 存储级联表示的外部记忆
+        self.memory = None
 
-        # 定义注意力层
+
         self.query_proj = nn.Linear(cascade_dim, attn_dim)
         self.key_proj = nn.Linear(cascade_dim, attn_dim)
         self.value_proj = nn.Linear(cascade_dim, cascade_dim)
 
     def initialize_memory(self, cascade_repr):
-        # 初始化外部记忆为一个全零张量
+
         self.memory = torch.zeros(self.memory_size, self.cascade_dim).to(self.device)
         batch_size = cascade_repr.size(0)
-        # 分离级联表示的梯度信息
+
         cascade_repr_detached = cascade_repr.detach()
         self.memory[self.mem_ptr:self.mem_ptr + batch_size] = cascade_repr_detached
         self.mem_ptr += batch_size
 
     def attend(self, cascade_repr):
-        # 计算注意力权重
+
         query = self.query_proj(cascade_repr)  # (batch, 1, attn_dim)
         keys = self.key_proj(self.memory[:self.mem_ptr])  # (mem_ptr, attn_dim)
         attn_weights = torch.matmul(query, keys.transpose(0, 1))  # (batch, 1, mem_ptr)
         attn_weights = torch.softmax(attn_weights, dim=-1)  # (batch, 1, mem_ptr)
 
-        # 根据注意力权重聚合记忆
+
         values = self.value_proj(self.memory[:self.mem_ptr])  # (mem_ptr, cascade_dim)
         attended_repr = torch.matmul(attn_weights, values)  # (batch, cascade_dim)
 
@@ -43,10 +43,10 @@ class ExternalMemory(nn.Module):
 
     def update_memory(self, cascade_repr):
         batch_size = cascade_repr.size(0)
-        # 分离级联表示的梯度信息
+
         cascade_repr_detached = cascade_repr.detach()
 
-        # 更新记忆
+
         if self.mem_ptr + batch_size <= self.memory_size:
             self.memory[self.mem_ptr:self.mem_ptr + batch_size] = cascade_repr_detached
             self.mem_ptr += batch_size
@@ -56,9 +56,7 @@ class ExternalMemory(nn.Module):
             self.mem_ptr = self.memory_size
 
     def reset_memory(self):
-        """
-        将外部记忆重置为None，并将记忆指针mem_ptr设为0。
-        """
+
         self.memory = None
         self.mem_ptr = 0
 

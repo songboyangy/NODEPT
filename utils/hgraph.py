@@ -13,7 +13,7 @@ class HGraph:
 
     def insert(self, cascades, srcs, dsts, abs_times, pub_times):
         self.cas_batch = defaultdict(list)
-        times = abs_times - pub_times  # 发布时间
+        times = abs_times - pub_times
         for cas, src, dst, time, abs_time in zip(cascades, srcs, dsts, times, abs_times):
             self.user_neighbor['follower'][src].append(dst)
             self.user_time['follower'][src].append(abs_time)
@@ -28,7 +28,7 @@ class HGraph:
             user, time = self.cascades[cas].get_seq()
             users.append(torch.tensor(user, dtype=torch.long))
             times.append(torch.tensor(time))
-            valid_length.append(len(user))#有效长度
+            valid_length.append(len(user))
         return users, times, valid_length
 
     def get_cas_pub_time(self, cascades):
@@ -67,10 +67,10 @@ class Cascade:
         self.id2node = dict()
         self.node_times = []
 
-    # 将一个新的交互记录插入到级联中
+
     def insert(self, u, v, t, abs_time):
-        self.seq.append((v, t))#接受者序列
-        self.pub_time = min(self.pub_time, abs_time)#一个级联的发布时间
+        self.seq.append((v, t))
+        self.pub_time = min(self.pub_time, abs_time)
         if v in self.node2id:
             if u not in self.node2id:
                 return
@@ -85,12 +85,12 @@ class Cascade:
         self.dag.append((u, v, t))
 
     def get_graph(self):
-        srcs, dsts, times = zip(*self.dag)  # 对元组进行解压，分别赋值给
-        nodes = list(set(srcs) | set(dsts))  # 合并为一个节点列表
+        srcs, dsts, times = zip(*self.dag)
+        nodes = list(set(srcs) | set(dsts))
         ids = list(range(len(nodes)))
         map_srcs = list(map(lambda x: self.node2id[x], srcs))
         map_dsts = list(map(lambda x: self.node2id[x], dsts))
-        graph_leaf = dgl.graph((map_srcs, map_dsts))  # 创建一个图，(map_srcs[i], map_dsts[i]) 表示图中的一条边。
+        graph_leaf = dgl.graph((map_srcs, map_dsts))
         graph_leaf.ndata['id'] = torch.tensor(list(map(lambda x: self.id2node[x], ids)))
         graph_leaf.edata['time'] = torch.tensor(times, dtype=torch.float)
         graph_leaf = dgl.RemoveSelfLoop()(graph_leaf)

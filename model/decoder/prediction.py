@@ -3,7 +3,7 @@ import torch
 from typing import Union
 
 
-# 一个线性层，将embedding映射为流行度
+
 class Linear(nn.Module):
     def __init__(self, emb_dim: int):
         super(Linear, self).__init__()
@@ -19,7 +19,7 @@ class Linear(nn.Module):
         return torch.squeeze(self.lins(emb), dim=1)
 
 
-# 一般都是使用merge来运行，因为这个同时用到了静态和动态
+
 class MergeLinear(nn.Module):
     def __init__(self, emb_dim: int, prob: float):
         super(MergeLinear, self).__init__()
@@ -38,7 +38,7 @@ class MergeLinear(nn.Module):
         return pred
 
 
-# 直接使用linear与利用一个概率组合在一起
+
 def get_predictor(emb_dim: int, predictor_type: str = 'linear', merge_prob: float = 0.5) -> Union[Linear, MergeLinear]:
     if predictor_type == 'linear':
         return Linear(emb_dim)

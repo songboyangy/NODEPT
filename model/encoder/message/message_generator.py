@@ -9,8 +9,7 @@ from model.encoder.message.message_aggregator import get_message_aggregator
 from model.time_encoder import get_time_encoder
 
 
-# 生成聚合消息，给定一个batch的交互，unique_multi_nodes应该生成消息的用户，unique_multi_messages生成的消息，每个用户对于一个列表
-# 用于生成聚合消息的代码
+
 class MessageGenerator(nn.Module):
     def __init__(self, state: Mapping[str, DynamicState], time_encoder: Mapping[str, nn.Module], device: torch.device,
                  message_aggregator_type: str, message_function: Mapping[str, Any]):
@@ -40,7 +39,7 @@ class MessageGenerator(nn.Module):
         """
         ...
 
-    # 聚合出唯一节点，唯一消息唯一时间戳
+
 
     def aggregate_transform(self, multi_nodes: Dict[str, List[int]],
                             multi_messages: Dict[str, Dict[int, List[Tuple[torch.Tensor, torch.Tensor]]]]) -> \
@@ -87,24 +86,23 @@ class ConCatMessage(MessageGenerator):
         raw_message = torch.cat(
             [self.state['user'].get_state(source_nodes, 'src'),
              self.state['user'].get_state(destination_nodes, 'dst'),
-             self.state['cas'].get_state(trans_cascades)], dim=1)  # 原始消息，用户以及级联的状态
+             self.state['cas'].get_state(trans_cascades)], dim=1)
         source_time_emb = self.time_encoder['user'](
-            edge_times - self.state['user'].get_last_update(source_nodes))  # get_last_update返回的是上一次更新的时间戳
+            edge_times - self.state['user'].get_last_update(source_nodes))
         des_time_emb = self.time_encoder['user'](edge_times - self.state['user'].get_last_update(destination_nodes))
         source_message = self.message_function['user']['src'].compute_message(
-            torch.cat([raw_message, source_time_emb], dim=1))  # 计算消息，对消息完成映射，得到消息
+            torch.cat([raw_message, source_time_emb], dim=1))
         dst_message = self.message_function['user']['dst'].compute_message(
             torch.cat([raw_message, des_time_emb], dim=1))
         nodes = {'src': [], 'dst': []}
-        messages = {'src': defaultdict(list), 'dst': defaultdict(list)}  # defaultdict(list) 对象，这是一个默认值为 list
-        # 的字典。这意味着如果尝试访问一个不存在的键，则会创建该键，并将其值初始化为一个空列表。
+        messages = {'src': defaultdict(list), 'dst': defaultdict(list)}
         for src_id, dst_id, src, dst, time in zip(source_nodes, destination_nodes, source_message, dst_message,
                                                   edge_times):
             nodes['src'].append(src_id)
             nodes['dst'].append(dst_id)
             messages['src'][src_id].append((src, time))
             messages['dst'][dst_id].append((dst, time))
-        m_nodes, m_messages, m_times = self.aggregate_transform(nodes, messages)  # 对节点消息进行转化，得到唯一的用户消息时间
+        m_nodes, m_messages, m_times = self.aggregate_transform(nodes, messages)
         unique_multi_nodes['user'] = m_nodes
         unique_multi_messages['user'] = m_messages
         unique_multi_timestamps['user'] = m_times
