@@ -37,6 +37,7 @@ class IdentityEmbedding(EmbeddingModule):
         return self.dynamic_state['cas'].get_state(cascade, from_cache=True)
 
 
+
 class ConcatEmbedding(EmbeddingModule):
     def __init__(self, dynamic_state: Mapping[str, DynamicState], embedding_dimension: int, device: torch.device,
                  dropout: float, hgraph: HGraph, max_global_time: float = 0.0, global_time_num: int = 0):
@@ -54,7 +55,7 @@ class ConcatEmbedding(EmbeddingModule):
             src_emb = self.dynamic_state['user'].get_state(src, 'src', from_cache=True).squeeze(dim=0)
             dst_emb = self.dynamic_state['user'].get_state(dst, 'dst', from_cache=True).squeeze(dim=0)
             if len(src) > 1:
-                src_emb = src_emb[-1]
+                src_emb = src_emb[-1]  # 源用户大于1，那么就是最后一个的动态
                 dst_emb = dst_emb[-1]
             src_embs.append(src_emb)
             dst_embs.append(dst_emb)
@@ -62,10 +63,11 @@ class ConcatEmbedding(EmbeddingModule):
         cas_embs += self.time_embedding(cas_pub_times)
         src_embs = torch.stack(src_embs, dim=0)
         dst_embs = torch.stack(dst_embs, dim=0)
+        #return torch.cat([src_embs, dst_embs, cas_embs], dim=1)
         return torch.cat([cas_embs], dim=1)
 
 
-# 默认使用这一个embddding模块
+
 class AggregateEmbedding(EmbeddingModule):
     def __init__(self, dynamic_state: Mapping[str, DynamicState], input_dimension: int, embedding_dimension: int,
                  device: torch.device, dropout: float, hgraph: HGraph, max_time: float, time_num: int,
@@ -80,7 +82,7 @@ class AggregateEmbedding(EmbeddingModule):
         self.time_position_encoder = TimeSlotEncoder(embedding_dimension, max_time, time_num)
         self.position_embedding = nn.Embedding(100, embedding_dimension)
         if self.use_dynamic:
-            #dynamic_trans_input_dim = 3 * input_dimension
+
             dynamic_trans_input_dim =  input_dimension
             self.concat_emb = ConcatEmbedding(dynamic_state, embedding_dimension, device, dropout, hgraph,
                                               max_global_time, global_time_num)  # 动态embedding

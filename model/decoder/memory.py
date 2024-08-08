@@ -14,7 +14,6 @@ class ExternalMemory(nn.Module):
 
         self.memory = None
 
-
         self.query_proj = nn.Linear(cascade_dim, attn_dim)
         self.key_proj = nn.Linear(cascade_dim, attn_dim)
         self.value_proj = nn.Linear(cascade_dim, cascade_dim)
@@ -35,7 +34,6 @@ class ExternalMemory(nn.Module):
         attn_weights = torch.matmul(query, keys.transpose(0, 1))  # (batch, 1, mem_ptr)
         attn_weights = torch.softmax(attn_weights, dim=-1)  # (batch, 1, mem_ptr)
 
-
         values = self.value_proj(self.memory[:self.mem_ptr])  # (mem_ptr, cascade_dim)
         attended_repr = torch.matmul(attn_weights, values)  # (batch, cascade_dim)
 
@@ -45,7 +43,6 @@ class ExternalMemory(nn.Module):
         batch_size = cascade_repr.size(0)
 
         cascade_repr_detached = cascade_repr.detach()
-
 
         if self.mem_ptr + batch_size <= self.memory_size:
             self.memory[self.mem_ptr:self.mem_ptr + batch_size] = cascade_repr_detached

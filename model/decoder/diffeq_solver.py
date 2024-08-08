@@ -50,7 +50,6 @@ class CasODEFunc(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.params=params
 
-    # 为什么返回的是梯度
     def forward(self, t_local, z, backwards=False):
         """
         Perform one step in solving ODE. Given current data point y and current time point t_local, returns gradient dy/dt at this time point

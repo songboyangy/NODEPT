@@ -94,7 +94,7 @@ time_steps_to_predict = torch.tensor(np.arange(param['observe_time'], param["res
 for num in range(param['run']):
     logger.info(f'begin runs:{num}')
     my_seed = num
-    random.seed(my_seed)  # 设置了seed
+    random.seed(my_seed)
     np.random.seed(my_seed)
     torch.manual_seed(my_seed)
     device_string = 'cuda:{}'.format(param['gpu']) if torch.cuda.is_available() else 'cpu'
