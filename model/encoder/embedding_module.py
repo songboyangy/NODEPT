@@ -61,9 +61,6 @@ class ConcatEmbedding(EmbeddingModule):
             dst_embs.append(dst_emb)
         cas_embs = self.dynamic_state['cas'].get_state(cascades, from_cache=True)
         cas_embs += self.time_embedding(cas_pub_times)
-        src_embs = torch.stack(src_embs, dim=0)
-        dst_embs = torch.stack(dst_embs, dim=0)
-        #return torch.cat([src_embs, dst_embs, cas_embs], dim=1)
         return torch.cat([cas_embs], dim=1)
 
 
