@@ -44,32 +44,6 @@ def get_label(x: pd.DataFrame, observe_time, label):
 
 
 
-def data_transformation(dataset, data, cas_popularity, time_unit, min_time, param):
-    if dataset == 'aps':
-        data['pub_time'] = (pd.to_datetime(data['pub_time']) - pd.to_datetime(min_time)).apply(lambda x: x.days)
-    else:
-        data['pub_time'] -= min_time
-    data['abs_time'] = (data['pub_time'] + data['time']) / time_unit
-    data['pub_time'] /= time_unit
-    data['time'] /= time_unit
-    data.sort_values(by=['abs_time', 'id'], inplace=True, ignore_index=True)
-    users = list(set(data['src']) | set(data['dst']))
-    ids = list(range(len(users)))
-    user2id, id2user = dict(zip(users, ids)), dict(zip(ids, users))
-    cases = list(set(data['cas']))
-    ids = list(range(len(cases)))
-    cas2id, id2cas = dict(zip(cases, ids)), dict(zip(ids, cases))
-    data['src'] = data['src'].apply(lambda x: user2id[x])
-    data['dst'] = data['dst'].apply(lambda x: user2id[x])
-    data['cas'] = data['cas'].apply(lambda x: cas2id[x])
-    cas_popularity1 = {cas2id[cas]: array for cas, array in cas_popularity.items()}
-    param['node_num'] = {'user': max(max(data['src']), max(data['dst'])) + 1, 'cas': max(data['cas']) + 1}
-    param['max_global_time'] = max(data['abs_time'])
-    pk.dump({'user2id': user2id, 'id2user': id2user, 'cas2id': cas2id, 'id2cas': id2cas},
-            open(f'data/{dataset}_idmap.pkl', 'wb'))
-    return cas_popularity1
-
-
 
 def get_split_data(dataset, observe_time, predict_time, restruct_time, time_unit, all_data, min_time, metadata, log,
                    param):
@@ -124,10 +98,8 @@ def get_split_data(dataset, observe_time, predict_time, restruct_time, time_unit
         for ts in range(num_timestamps):
             popularity_array[ts] = df[df['time'] <= (observe_time + ts) * time_unit]['id'].count()-df[df['time'] <= observe_time  * time_unit]['id'].count()
         cas_popularity_dict[cas] = popularity_array
-    """all_idx is used for baselines to select the cascade id, so it don't need to be remapped"""
     cas_popularity = data_transformation(dataset, all_data, cas_popularity_dict, time_unit, min_time,
                                          param)
-    all_data.to_csv(f'data/{dataset}_split.csv', index=False)
     pk.dump(all_idx, open(f'data/{dataset}_idx.pkl', 'wb'))
     log.info(
         f"Total Trans num is {len(all_data)}, Train cas num is {len(all_idx['train'])}, "
@@ -139,13 +111,6 @@ def get_split_data(dataset, observe_time, predict_time, restruct_time, time_unit
 def get_data(dataset, observe_time, predict_time, restruct_time, train_time, val_time, test_time, time_unit,
              log: logging.Logger, param):
     a = time.time()
-    """
-    data stores all diffusion behaviors, in the form of (id,src,dst,cas,time). The `id` refers to the
-    id of the interaction; `src`,`dst`,`cas`,`time` means that user `dst` forwards the message `cas` from `dst`
-    after `time` time has elapsed since the publication of cascade `cas`. 
-    -----------------
-    metadata stores the metadata of cascades, including the publication time, publication user, etc.
-    """
     data: pd.DataFrame = pd.read_csv(f'data/{dataset}.csv')
     metadata = pd.read_csv(f'data/{dataset}_metadata.csv')
     min_time = min(metadata['pub_time'])
@@ -154,8 +119,6 @@ def get_data(dataset, observe_time, predict_time, restruct_time, train_time, val
     param['max_time'] = {'user': 1, 'cas': param['observe_time']}
     data['label'] = -1
     data.sort_values(by='id', inplace=True, ignore_index=True)
-    log.info(
-        f"Min time is {min_time}, Train time is {train_time}, Val time is {val_time}, Test time is {test_time}, Time unit is {time_unit}")
     return_data = get_split_data(dataset, observe_time, predict_time, restruct_time, time_unit, data, min_time,
                                  metadata, log, param)
     b = time.time()
