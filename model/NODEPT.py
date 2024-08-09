@@ -14,7 +14,7 @@ from model.encoder.encoder_z0 import EncodeZ0
 from model.decoder.memory import ExternalMemory
 
 
-class ODEPT(nn.Module):
+class NODEPT(nn.Module):
     def __init__(self, args, device: torch.device, time_steps_to_predict, node_dim: int = 100,
                  embedding_module_type: str = "seq",
                  state_updater_type: str = "gru", predictor: str = 'linear', time_enc_dim: int = 8,
@@ -22,7 +22,7 @@ class ODEPT(nn.Module):
                  max_time: float = None, use_static: bool = False, merge_prob: float = 0.5,
                  max_global_time: float = 0, use_dynamic: bool = False, use_temporal: bool = False,
                  use_structural: bool = False):
-        super(ODEPT, self).__init__()
+        super(NODEPT, self).__init__()
         if max_time is None:
             max_time = {'user': 1, 'cas': 1}
         self.ntypes = ntypes
@@ -109,3 +109,4 @@ class ODEPT(nn.Module):
     def detach_state(self):
         for ntype in self.ntypes:
             self.dynamic_state[ntype].detach_state()
+

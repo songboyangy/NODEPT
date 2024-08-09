@@ -4,7 +4,7 @@ import torch
 from tqdm import tqdm
 from utils.my_utils import save_model, load_model, EarlyStopMonitor, Metric
 import time
-from model.ODEPT import ODEPT
+from model.NODEPT import ODEPT
 import math
 from utils.data_processing import Data
 from typing import Tuple, Dict, Type

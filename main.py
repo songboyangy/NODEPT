@@ -4,7 +4,7 @@ import random
 import argparse
 import torch
 import numpy as np
-from model.ODEPT import ODEPT
+from model.NODEPT import NODEPT
 from utils.data_processing import get_data
 from train.train import train_model
 from utils.my_utils import EarlyStopMonitor, set_config, Metric
@@ -99,7 +99,7 @@ for num in range(param['run']):
     torch.manual_seed(my_seed)
     device_string = 'cuda:{}'.format(param['gpu']) if torch.cuda.is_available() else 'cpu'
     device = torch.device(device_string)
-    model = ODEPT(args=param, device=device, node_dim=param['node_dim'], embedding_module_type=param['embedding_module'],
+    model = NODEPT(args=param, device=device, node_dim=param['node_dim'], embedding_module_type=param['embedding_module'],
                  state_updater_type='gru', predictor=param['predictor'], time_enc_dim=param['time_dim'],
                  single=param['single'], ntypes={'user', 'cas'}, dropout=param['dropout'],
                  n_nodes=param['node_num'], max_time=param['max_time'], use_static=param['use_static'],
