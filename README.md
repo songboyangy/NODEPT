@@ -1,4 +1,4 @@
-# ODEPT
+# NODEPT
 
 This repository provides an implementation of Continuous Dynamic Modeling via Neural ODEs for Popularity Trajectory Prediction. 
 The core components are intended to illustrate the ODEPT model described in our paper. 
